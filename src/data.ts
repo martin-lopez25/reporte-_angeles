@@ -8,7 +8,7 @@ async function fetchBaseClues(): Promise<string[]> {
   const ts = Date.now();
 
   try {
-    const response = await fetch(`/base_clues.json?_cb=${ts}`);
+    const response = await fetch(`${import.meta.env.BASE_URL}base_clues.json?_cb=${ts}`);
     if (!response.ok) return [];
 
     const payload = await response.json();
@@ -34,7 +34,7 @@ async function fetchBaseMeta(): Promise<{ cluesTotal: number; entidadesEsperadas
   const ts = Date.now();
 
   try {
-    const response = await fetch(`/base_meta.json?_cb=${ts}`);
+    const response = await fetch(`${import.meta.env.BASE_URL}base_meta.json?_cb=${ts}`);
     if (!response.ok) return { cluesTotal: 0, entidadesEsperadas: 0 };
 
     const payload = await response.json();
