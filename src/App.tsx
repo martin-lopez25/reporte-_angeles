@@ -18,10 +18,23 @@ function toNumber(value: unknown): number {
   return Number.isNaN(num) ? 0 : num;
 }
 
-function formatCellValue(value: unknown): string {
+function excelSerialToDate(serial: number): Date {
+  // Excel epoch: Dec 30, 1899 = day 0; JS epoch: Jan 1, 1970 = day 25569
+  return new Date((serial - 25569) * 86400 * 1000);
+}
+
+function formatCellValue(value: unknown, key?: string): string {
   if (value === null || value === undefined || value === '') return '-';
   if (typeof value === 'boolean') return value ? 'Si' : 'No';
-  if (typeof value === 'number') return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  if (typeof value === 'number') {
+    // Detecta serial de fecha Excel en columnas cuyo nombre contiene 'fecha'
+    if (key && /fecha/i.test(key) && value > 25569 && value < 73050) {
+      const d = excelSerialToDate(value);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getDate()}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  }
 
   const text = String(value).trim();
   if (text.toLowerCase() === 'true') return 'Si';
@@ -157,7 +170,7 @@ export default function App() {
     return Object.keys(rows[0]).map((key) => ({
       key,
       label: key,
-      render: (row: DataRow) => formatCellValue(row[key]),
+      render: (row: DataRow) => formatCellValue(row[key], key),
     }));
   };
 
