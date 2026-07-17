@@ -81,6 +81,18 @@ function inferDataUpdatedAt(rows: DataRow[]): Date | null {
   return latest;
 }
 
+function formatLastUpdateLabel(date: Date): string {
+  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  const hour24 = date.getHours();
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hour24 >= 12 ? 'p.m.' : 'a.m.';
+  return `${day} ${month} ${year}, ${String(hour12).padStart(2, '0')}:${minute} ${ampm}`;
+}
+
 function formatCellValue(value: unknown, key?: string): string {
   if (value === null || value === undefined || value === '') return '-';
   if (typeof value === 'boolean') return value ? 'Si' : 'No';
@@ -126,7 +138,9 @@ export default function App() {
       setResultado(tablas.resultado);
       setResumen(tablas.resumen);
       setResumenEntidad(tablas.resumenEntidad);
-      setLastUpdate(inferDataUpdatedAt(tablas.baseAn));
+
+      const updatedFromScript = parseDateValue(tablas.baseMeta.scriptLastRunAt);
+      setLastUpdate(updatedFromScript ?? inferDataUpdatedAt(tablas.baseAn));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ocurrio un error al cargar datos');
     } finally {
@@ -138,13 +152,7 @@ export default function App() {
 
   const lastUpdateLabel = useMemo(() => {
     if (!lastUpdate) return 'Sin actualizacion';
-    return lastUpdate.toLocaleString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatLastUpdateLabel(lastUpdate);
   }, [lastUpdate]);
 
   const stats = useMemo<DashboardStats>(() => {
@@ -271,13 +279,15 @@ export default function App() {
     return [...map.values()].sort((a, b) => b.unidades - a.unidades);
   }, [resumen]);
 
-  const tableColumns = (rows: DataRow[]) => {
+  const tableColumns = (rows: DataRow[], includeFechaRegistro = true) => {
     if (!rows.length) return [];
-    return Object.keys(rows[0]).map((key) => ({
+    return Object.keys(rows[0])
+      .filter((key) => includeFechaRegistro || key !== 'fecha_registro')
+      .map((key) => ({
       key,
       label: key,
       render: (row: DataRow) => formatCellValue(row[key], key),
-    }));
+      }));
   };
 
   const tabs: { key: TabKey; label: string; icon: typeof Database; count: number }[] = [
@@ -327,7 +337,8 @@ export default function App() {
                   exportFileName="base_cruda"
                   exportSheetName="Base Cruda"
                   data={baseAn}
-                  columns={tableColumns(baseAn)}
+                  columns={tableColumns(baseAn, false)}
+                  exportColumns={tableColumns(baseAn, true)}
                 />
               )}
 
@@ -336,7 +347,8 @@ export default function App() {
                   exportFileName="por_clues"
                   exportSheetName="Por CLUES"
                   data={resultado}
-                  columns={tableColumns(resultado)}
+                  columns={tableColumns(resultado, false)}
+                  exportColumns={tableColumns(resultado, true)}
                 />
               )}
 
@@ -345,7 +357,8 @@ export default function App() {
                   exportFileName="por_estado"
                   exportSheetName="Por Estado"
                   data={resumenEntidad}
-                  columns={tableColumns(resumenEntidad)}
+                  columns={tableColumns(resumenEntidad, false)}
+                  exportColumns={tableColumns(resumenEntidad, true)}
                 />
               )}
             </div>

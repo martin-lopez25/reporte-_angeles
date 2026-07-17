@@ -30,7 +30,7 @@ async function fetchBaseClues(): Promise<string[]> {
   return [];
 }
 
-async function fetchBaseMeta(): Promise<{ cluesTotal: number; entidadesEsperadas: number }> {
+async function fetchBaseMeta(): Promise<{ cluesTotal: number; entidadesEsperadas: number; scriptLastRunAt?: string }> {
   const ts = Date.now();
 
   try {
@@ -44,6 +44,7 @@ async function fetchBaseMeta(): Promise<{ cluesTotal: number; entidadesEsperadas
     return {
       cluesTotal: Number.isFinite(cluesTotal) ? cluesTotal : 0,
       entidadesEsperadas: Number.isFinite(entidadesEsperadas) ? entidadesEsperadas : 0,
+      scriptLastRunAt: typeof payload?.script_last_run_at === 'string' ? payload.script_last_run_at : undefined,
     };
   } catch {
     return { cluesTotal: 0, entidadesEsperadas: 0 };
@@ -102,7 +103,7 @@ async function fetchBaseAn(): Promise<DataRow[]> {
 function buildTables(
   baseAn: DataRow[],
   baseClues: string[],
-  baseMeta: { cluesTotal: number; entidadesEsperadas: number },
+  baseMeta: { cluesTotal: number; entidadesEsperadas: number; scriptLastRunAt?: string },
 ): TablasFormulario {
   const unidadByClues = new Map<string, DataRow>();
 

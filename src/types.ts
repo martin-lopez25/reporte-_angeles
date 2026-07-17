@@ -6,6 +6,7 @@ export interface TablasFormulario {
   baseMeta: {
     cluesTotal: number;
     entidadesEsperadas: number;
+    scriptLastRunAt?: string;
   };
   baseAn: DataRow[];
   resultado: DataRow[];

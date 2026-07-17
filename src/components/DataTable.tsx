@@ -12,6 +12,7 @@ interface Column<T> {
 interface DataTableProps<T extends object> {
   data: T[];
   columns: Column<T>[];
+  exportColumns?: Column<T>[];
   exportFileName: string;
   exportSheetName: string;
 }
@@ -21,6 +22,7 @@ const PAGE_SIZE = 15;
 export function DataTable<T extends object>({
   data,
   columns,
+  exportColumns,
   exportFileName,
   exportSheetName,
 }: DataTableProps<T>) {
@@ -64,9 +66,10 @@ export function DataTable<T extends object>({
   };
 
   const handleExport = () => {
+    const columnsToExport = exportColumns ?? columns;
     const out = sorted.map((row) => {
       const o: Record<string, unknown> = {};
-      columns.forEach((col) => {
+      columnsToExport.forEach((col) => {
         o[col.label] = row[col.key];
       });
       return o;
