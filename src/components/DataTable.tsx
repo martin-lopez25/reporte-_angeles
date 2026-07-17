@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Download, Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Search, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { exportarExcel } from '../exportExcel';
 
 interface Column<T> {
@@ -103,7 +103,13 @@ export function DataTable<T extends object>({
                       className="flex items-center gap-1 text-xs uppercase tracking-wider text-gray-500 transition-colors hover:text-imss-green"
                     >
                       {col.label}
-                      <ArrowUpDown className={`h-3 w-3 ${sortKey === col.key ? 'text-imss-gold' : 'opacity-30'}`} />
+                      {sortKey === col.key ? (
+                        sortDir === 'asc'
+                          ? <ChevronUp className="h-3.5 w-3.5 text-imss-gold" />
+                          : <ChevronDown className="h-3.5 w-3.5 text-imss-gold" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-30" />
+                      )}
                     </button>
                   ) : (
                     <span className="text-xs uppercase tracking-wider text-gray-500">{col.label}</span>
