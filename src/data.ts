@@ -4,6 +4,52 @@ import type { CellValue, DataRow, TablasFormulario } from './types';
 const SHEET_ID = '1maRNGDuU9rEFWZLgMdhJS1waAnJxl6ENntm-nyD0tq8';
 const GID = '1765182479';
 
+async function fetchBaseClues(): Promise<string[]> {
+  const ts = Date.now();
+
+  try {
+    const response = await fetch(`/base_clues.json?_cb=${ts}`);
+    if (!response.ok) return [];
+
+    const payload = await response.json();
+
+    if (Array.isArray(payload)) {
+      const clues = payload
+        .map((row) => {
+          if (typeof row === 'string') return row.trim();
+          if (row && typeof row === 'object' && 'clues_imb' in row) return String((row as { clues_imb: unknown }).clues_imb ?? '').trim();
+          return '';
+        })
+        .filter(Boolean);
+      return [...new Set(clues)];
+    }
+  } catch {
+    // Si no existe el archivo aun, se usara fallback desde base_an.
+  }
+
+  return [];
+}
+
+async function fetchBaseMeta(): Promise<{ cluesTotal: number; entidadesEsperadas: number }> {
+  const ts = Date.now();
+
+  try {
+    const response = await fetch(`/base_meta.json?_cb=${ts}`);
+    if (!response.ok) return { cluesTotal: 0, entidadesEsperadas: 0 };
+
+    const payload = await response.json();
+    const cluesTotal = Number(payload?.clues_total ?? 0);
+    const entidadesEsperadas = Number(payload?.entidades_esperadas ?? 0);
+
+    return {
+      cluesTotal: Number.isFinite(cluesTotal) ? cluesTotal : 0,
+      entidadesEsperadas: Number.isFinite(entidadesEsperadas) ? entidadesEsperadas : 0,
+    };
+  } catch {
+    return { cluesTotal: 0, entidadesEsperadas: 0 };
+  }
+}
+
 function toText(value: unknown): string {
   if (value === null || value === undefined) return '';
   return String(value).trim();
@@ -53,7 +99,11 @@ async function fetchBaseAn(): Promise<DataRow[]> {
   });
 }
 
-function buildTables(baseAn: DataRow[]): TablasFormulario {
+function buildTables(
+  baseAn: DataRow[],
+  baseClues: string[],
+  baseMeta: { cluesTotal: number; entidadesEsperadas: number },
+): TablasFormulario {
   const unidadByClues = new Map<string, DataRow>();
 
   for (const row of baseAn) {
@@ -189,6 +239,8 @@ function buildTables(baseAn: DataRow[]): TablasFormulario {
   }
 
   return {
+    baseClues,
+    baseMeta,
     baseAn,
     resultado,
     resumen,
@@ -197,7 +249,7 @@ function buildTables(baseAn: DataRow[]): TablasFormulario {
 }
 
 export async function cargarTablasFormulario(): Promise<{ tablas: TablasFormulario; fetchedAt: Date }> {
-  const baseAn = await fetchBaseAn();
-  const tablas = buildTables(baseAn);
+  const [baseAn, baseClues, baseMeta] = await Promise.all([fetchBaseAn(), fetchBaseClues(), fetchBaseMeta()]);
+  const tablas = buildTables(baseAn, baseClues, baseMeta);
   return { tablas, fetchedAt: new Date() };
 }

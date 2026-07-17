@@ -12,14 +12,14 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { Database, Layers3, Building2, Globe, MapPinned } from 'lucide-react';
-import type { DashboardStats, EntidadChart, InternetPieItem, TopUnidadChart } from '../types';
+import { Database, Layers3, Building2, Globe, ClipboardList } from 'lucide-react';
+import type { DashboardStats, EntidadChart, InternetPieItem, TopFaltanteChart } from '../types';
 
 interface ChartsProps {
   stats: DashboardStats;
-  topUnidades: TopUnidadChart[];
   internetPie: InternetPieItem[];
   porEntidad: EntidadChart[];
+  topFaltantes: TopFaltanteChart[];
 }
 
 const PIE_COLORS = ['#1A6B5E', '#A57F2C'];
@@ -40,11 +40,10 @@ function formatTooltipNumber(value: unknown): string {
 }
 
 type StatKey =
-  | 'registrosBase'
-  | 'filasResultado'
-  | 'unidadesResumen'
+  | 'cluesCapturadas'
+  | 'entidadesCapturadas'
   | 'unidadesInternet'
-  | 'entidades';
+  | 'consultoriosLevantados';
 
 interface StatCardDef {
   icon: typeof Database;
@@ -59,19 +58,9 @@ interface StatCardDef {
 
 const STAT_CARDS: StatCardDef[] = [
   {
-    icon: Database,
-    label: 'BASE CRUDA (FILAS)',
-    key: 'registrosBase',
-    bg: 'bg-gradient-to-br from-imss-green to-imss-green-mid',
-    iconBg: 'bg-white/15',
-    iconColor: 'text-white',
-    valueColor: 'text-white',
-    border: 'border-imss-green',
-  },
-  {
     icon: Layers3,
-    label: 'POR CLUES (FILAS)',
-    key: 'filasResultado',
+    label: 'COBERTURA CLUES',
+    key: 'cluesCapturadas',
     bg: 'bg-emerald-50',
     iconBg: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
@@ -80,8 +69,8 @@ const STAT_CARDS: StatCardDef[] = [
   },
   {
     icon: Building2,
-    label: 'POR ESTADO (UNIDADES)',
-    key: 'unidadesResumen',
+    label: 'COBERTURA ENTIDADES',
+    key: 'entidadesCapturadas',
     bg: 'bg-amber-50',
     iconBg: 'bg-amber-100',
     iconColor: 'text-amber-600',
@@ -99,9 +88,9 @@ const STAT_CARDS: StatCardDef[] = [
     border: 'border-rose-200',
   },
   {
-    icon: MapPinned,
-    label: 'ENTIDADES',
-    key: 'entidades',
+    icon: ClipboardList,
+    label: 'CONSULTORIOS LEVANTADOS',
+    key: 'consultoriosLevantados',
     bg: 'bg-teal-50',
     iconBg: 'bg-teal-100',
     iconColor: 'text-teal-600',
@@ -110,8 +99,24 @@ const STAT_CARDS: StatCardDef[] = [
   },
 ];
 
-function StatCard({ def, value }: { def: StatCardDef; value: number }) {
+function pctLabel(actual: number, expected: number): string {
+  if (expected <= 0) return '0.0%';
+  return `${((actual / expected) * 100).toFixed(1)}%`;
+}
+
+function StatCard({
+  def,
+  value,
+  expected,
+  helper,
+}: {
+  def: StatCardDef;
+  value: number;
+  expected?: number;
+  helper?: string;
+}) {
   const { icon: Icon, label, bg, iconBg, iconColor, valueColor, border } = def;
+  const pct = typeof expected === 'number' ? pctLabel(value, expected) : null;
   return (
     <div
       className={`group relative cursor-default overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg ${border} ${bg}`}
@@ -129,7 +134,13 @@ function StatCard({ def, value }: { def: StatCardDef; value: number }) {
       <p className="relative mb-1 text-[10px] font-bold uppercase tracking-widest opacity-70" style={{ color: valueColor === 'text-white' ? '#fff' : undefined }}>
         <span className={valueColor === 'text-white' ? 'text-white/70' : 'text-gray-500'}>{label}</span>
       </p>
-      <p className={`relative text-3xl font-black tabular-nums ${valueColor}`}>{value.toLocaleString('es-MX')}</p>
+      <p className={`relative text-3xl font-black tabular-nums ${valueColor}`}>{pct ?? value.toLocaleString('es-MX')}</p>
+      {typeof expected === 'number' ? (
+        <p className="mt-1 text-xs font-medium text-gray-500">
+          {value.toLocaleString('es-MX')} de {expected.toLocaleString('es-MX')}
+        </p>
+      ) : null}
+      {helper ? <p className="mt-1 text-xs text-gray-500">{helper}</p> : null}
     </div>
   );
 }
@@ -159,43 +170,63 @@ function ChartCard({
 export function StatCards({
   stats,
 }: ChartsProps) {
-  const values: Record<StatKey, number> = {
-    registrosBase: stats.registrosBase,
-    filasResultado: stats.filasResultado,
-    unidadesResumen: stats.unidadesResumen,
-    unidadesInternet: stats.unidadesInternet,
-    entidades: stats.entidades,
+  const values: Record<StatKey, { value: number; expected?: number; helper?: string }> = {
+    cluesCapturadas: {
+      value: stats.cluesCapturadas,
+      expected: stats.baseCluesEsperadas,
+    },
+    entidadesCapturadas: {
+      value: stats.entidadesCapturadas,
+      expected: stats.baseEntidadesEsperadas,
+    },
+    unidadesInternet: {
+      value: stats.unidadesInternet,
+      expected: stats.baseCluesEsperadas,
+    },
+    consultoriosLevantados: {
+      value: stats.consultoriosLevantados,
+      expected: stats.baseCluesEsperadas,
+    },
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {STAT_CARDS.map((def) => (
-        <StatCard key={def.key} def={def} value={values[def.key]} />
+        <StatCard
+          key={def.key}
+          def={def}
+          value={values[def.key].value}
+          expected={values[def.key].expected}
+          helper={values[def.key].helper}
+        />
       ))}
     </div>
   );
 }
 
 export function Charts({
-  topUnidades,
   internetPie,
   porEntidad,
+  topFaltantes,
 }: ChartsProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ChartCard title="Top 10 CLUES por preguntas acumuladas" subtitle="Suma de columnas numericas en resumen por unidad">
+        <ChartCard title="Top 10 cosas mas frecuentes que no tienen" subtitle="Frecuencia de faltantes por pregunta en consultorios levantados">
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={topUnidades} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+            <BarChart data={topFaltantes} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-              <YAxis type="category" dataKey="clues" tick={{ fontSize: 10, fill: '#6B7280' }} width={80} />
+              <YAxis type="category" dataKey="item" tick={{ fontSize: 10, fill: '#6B7280' }} width={180} />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(v) => [formatTooltipNumber(v), 'Total']}
+                formatter={(v, name, item) => {
+                  if (name === 'pct') return [`${formatTooltipNumber(v)}%`, '%'];
+                  return [formatTooltipNumber(v), 'Faltantes'];
+                }}
                 cursor={{ fill: '#F9FAFB' }}
               />
-              <Bar dataKey="total" fill="#A57F2C" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="faltantes" fill="#A57F2C" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

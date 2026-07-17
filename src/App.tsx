@@ -4,7 +4,7 @@ import { Header } from './components/Header';
 import { Charts, StatCards } from './components/Charts';
 import { DataTable } from './components/DataTable';
 import { cargarTablasFormulario } from './data';
-import type { DashboardStats, DataRow, EntidadChart, InternetPieItem, TopUnidadChart } from './types';
+import type { DashboardStats, DataRow, EntidadChart, InternetPieItem, TopFaltanteChart } from './types';
 
 type TabKey = 'cruda' | 'clues' | 'estado';
 
@@ -16,6 +16,15 @@ function toText(value: unknown): string {
 function toNumber(value: unknown): number {
   const num = Number(value);
   return Number.isNaN(num) ? 0 : num;
+}
+
+function isMissingValue(value: unknown): boolean {
+  if (value === null || value === undefined || value === '') return true;
+  if (typeof value === 'boolean') return value === false;
+  if (typeof value === 'number') return value <= 0;
+
+  const text = toText(value).toLowerCase();
+  return text === '' || text === 'false' || text === 'no' || text === '0' || text === 'nan';
 }
 
 function excelSerialToDate(serial: number): Date {
@@ -96,6 +105,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [baseAn, setBaseAn] = useState<DataRow[]>([]);
+  const [baseClues, setBaseClues] = useState<string[]>([]);
+  const [baseMeta, setBaseMeta] = useState<{ cluesTotal: number; entidadesEsperadas: number }>({
+    cluesTotal: 0,
+    entidadesEsperadas: 0,
+  });
   const [resultado, setResultado] = useState<DataRow[]>([]);
   const [resumen, setResumen] = useState<DataRow[]>([]);
   const [resumenEntidad, setResumenEntidad] = useState<DataRow[]>([]);
@@ -106,6 +120,8 @@ export default function App() {
       setLoading(true);
       setError(null);
       const { tablas } = await cargarTablasFormulario();
+      setBaseClues(tablas.baseClues);
+      setBaseMeta(tablas.baseMeta);
       setBaseAn(tablas.baseAn);
       setResultado(tablas.resultado);
       setResumen(tablas.resumen);
@@ -132,27 +148,60 @@ export default function App() {
   }, [lastUpdate]);
 
   const stats = useMemo<DashboardStats>(() => {
-    const entidades = new Set<string>();
-    let unidadesInternet = 0;
+    const unidadRows = baseAn.filter((row) => toText(row.tipo_registro) === 'unidad');
+    const respuestaRows = baseAn.filter((row) => toText(row.tipo_registro) === 'respuesta');
+
+    const cluesEsperadas = new Set<string>();
+
+    for (const row of unidadRows) {
+      const clues = toText(row.clues_imb);
+
+      if (clues) cluesEsperadas.add(clues);
+    }
+
+    const cluesCapturadas = new Set<string>();
+    const entidadesCapturadas = new Set<string>();
+    const cluesConInternet = new Set<string>();
+    const cluesConConsultorio = new Set<string>();
 
     for (const row of resumen) {
+      const clues = toText(row.clues_imb);
       const entidad = toText(row.entidad);
-      if (entidad) entidades.add(entidad);
+      if (clues) cluesCapturadas.add(clues);
+      if (entidad) entidadesCapturadas.add(entidad);
 
       const internet = toText(row.internet).toLowerCase();
-      if (internet === 'true' || internet === '1' || internet === 'si') unidadesInternet++;
+      if (clues && (internet === 'true' || internet === '1' || internet === 'si')) cluesConInternet.add(clues);
+
+      if (clues && Math.max(0, toNumber(row.consultorio)) > 0) cluesConConsultorio.add(clues);
     }
+
+    const fallbackClues = baseClues.length > 0
+      ? baseClues.map((c) => toText(c)).filter(Boolean).length
+      : cluesEsperadas.size;
+    const denominadorClues = baseMeta.cluesTotal > 0 ? baseMeta.cluesTotal : fallbackClues;
+
+    const fallbackEntidades = new Set(
+      unidadRows
+        .map((row) => toText(row.entidad))
+        .filter(Boolean),
+    ).size;
+    const denominadorEntidades = baseMeta.entidadesEsperadas > 0 ? baseMeta.entidadesEsperadas : fallbackEntidades;
 
     return {
       registrosBase: baseAn.length,
-      filasResultado: resultado.length,
-      unidadesResumen: resumen.length,
-      entidades: entidades.size,
-      unidadesInternet,
+      registrosUnidad: unidadRows.length,
+      registrosRespuesta: respuestaRows.length,
+      baseCluesEsperadas: denominadorClues,
+      baseEntidadesEsperadas: denominadorEntidades,
+      cluesCapturadas: cluesCapturadas.size,
+      entidadesCapturadas: entidadesCapturadas.size,
+      unidadesInternet: cluesConInternet.size,
+      consultoriosLevantados: cluesConConsultorio.size,
     };
-  }, [baseAn, resultado, resumen]);
+  }, [baseAn, baseClues, baseMeta, resultado, resumen]);
 
-  const topUnidades = useMemo<TopUnidadChart[]>(() => {
+  const topFaltantes = useMemo<TopFaltanteChart[]>(() => {
     const fixedCols = new Set([
       'entidad',
       'clues_imb',
@@ -163,26 +212,34 @@ export default function App() {
       'turno_consultorio',
     ]);
 
-    return resumen
-      .map((row) => {
-        let total = 0;
-        for (const [key, value] of Object.entries(row)) {
-          if (fixedCols.has(key)) continue;
-          total += toNumber(value);
+    if (!resultado.length) return [];
+
+    const counts = new Map<string, number>();
+
+    for (const row of resultado) {
+      for (const [key, value] of Object.entries(row)) {
+        if (fixedCols.has(key)) continue;
+        if (isMissingValue(value)) {
+          counts.set(key, (counts.get(key) ?? 0) + 1);
         }
-        return {
-          clues: toText(row.clues_imb),
-          total,
-        };
-      })
-      .filter((item) => item.clues)
-      .sort((a, b) => b.total - a.total)
+      }
+    }
+
+    const total = resultado.length;
+
+    return [...counts.entries()]
+      .map(([item, faltantes]) => ({
+        item: item.replaceAll('_', ' '),
+        faltantes,
+        pct: total > 0 ? (faltantes / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.faltantes - a.faltantes)
       .slice(0, 10);
-  }, [resumen]);
+  }, [resultado]);
 
   const internetPie = useMemo<InternetPieItem[]>(() => {
     const conInternet = stats.unidadesInternet;
-    const sinInternet = Math.max(0, stats.unidadesResumen - conInternet);
+    const sinInternet = Math.max(0, stats.baseCluesEsperadas - conInternet);
     return [
       { name: 'Con Internet', value: conInternet },
       { name: 'Sin Internet', value: sinInternet },
@@ -240,7 +297,7 @@ export default function App() {
           <div className="card border-imss-wine/30 bg-imss-wine/5 p-8 text-imss-wine">Error: {error}</div>
         ) : (
           <>
-            <StatCards stats={stats} topUnidades={topUnidades} internetPie={internetPie} porEntidad={porEntidad} />
+            <StatCards stats={stats} internetPie={internetPie} porEntidad={porEntidad} topFaltantes={topFaltantes} />
 
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
@@ -293,7 +350,7 @@ export default function App() {
               )}
             </div>
 
-            <Charts stats={stats} topUnidades={topUnidades} internetPie={internetPie} porEntidad={porEntidad} />
+            <Charts stats={stats} internetPie={internetPie} porEntidad={porEntidad} topFaltantes={topFaltantes} />
           </>
         )}
       </main>

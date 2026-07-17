@@ -2,6 +2,11 @@ export type CellValue = string | number | boolean | null;
 export type DataRow = Record<string, CellValue>;
 
 export interface TablasFormulario {
+  baseClues: string[];
+  baseMeta: {
+    cluesTotal: number;
+    entidadesEsperadas: number;
+  };
   baseAn: DataRow[];
   resultado: DataRow[];
   resumen: DataRow[];
@@ -10,15 +15,25 @@ export interface TablasFormulario {
 
 export interface DashboardStats {
   registrosBase: number;
-  filasResultado: number;
-  unidadesResumen: number;
-  entidades: number;
+  registrosUnidad: number;
+  registrosRespuesta: number;
+  baseCluesEsperadas: number;
+  baseEntidadesEsperadas: number;
+  cluesCapturadas: number;
+  entidadesCapturadas: number;
   unidadesInternet: number;
+  consultoriosLevantados: number;
 }
 
 export interface TopUnidadChart {
   clues: string;
   total: number;
+}
+
+export interface TopFaltanteChart {
+  item: string;
+  faltantes: number;
+  pct: number;
 }
 
 export interface InternetPieItem {
