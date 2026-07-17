@@ -23,6 +23,55 @@ function excelSerialToDate(serial: number): Date {
   return new Date((serial - 25569) * 86400 * 1000);
 }
 
+function parseDateValue(value: unknown): Date | null {
+  if (value === null || value === undefined || value === '') return null;
+
+  if (typeof value === 'number') {
+    if (value > 25569 && value < 73050) {
+      const d = excelSerialToDate(value);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  }
+
+  const text = toText(value);
+  if (!text) return null;
+
+  const nativeDate = new Date(text);
+  if (!Number.isNaN(nativeDate.getTime())) return nativeDate;
+
+  const mxFormat = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (!mxFormat) return null;
+
+  const day = Number(mxFormat[1]);
+  const month = Number(mxFormat[2]);
+  const year = Number(mxFormat[3]);
+  const hour = Number(mxFormat[4] ?? 0);
+  const minute = Number(mxFormat[5] ?? 0);
+  const second = Number(mxFormat[6] ?? 0);
+
+  const parsed = new Date(year, month - 1, day, hour, minute, second);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function inferDataUpdatedAt(rows: DataRow[]): Date | null {
+  let latest: Date | null = null;
+
+  for (const row of rows) {
+    for (const [key, value] of Object.entries(row)) {
+      if (!/fecha/i.test(key)) continue;
+      const parsed = parseDateValue(value);
+      if (!parsed) continue;
+
+      if (!latest || parsed.getTime() > latest.getTime()) {
+        latest = parsed;
+      }
+    }
+  }
+
+  return latest;
+}
+
 function formatCellValue(value: unknown, key?: string): string {
   if (value === null || value === undefined || value === '') return '-';
   if (typeof value === 'boolean') return value ? 'Si' : 'No';
@@ -56,12 +105,12 @@ export default function App() {
     try {
       setLoading(true);
       setError(null);
-      const { tablas, fetchedAt } = await cargarTablasFormulario();
+      const { tablas } = await cargarTablasFormulario();
       setBaseAn(tablas.baseAn);
       setResultado(tablas.resultado);
       setResumen(tablas.resumen);
       setResumenEntidad(tablas.resumenEntidad);
-      setLastUpdate(fetchedAt);
+      setLastUpdate(inferDataUpdatedAt(tablas.baseAn));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ocurrio un error al cargar datos');
     } finally {

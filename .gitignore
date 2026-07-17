@@ -22,7 +22,3 @@ dist-ssr
 *.sln
 *.sw?
 .env
-
-# Datos locales generados por el notebook — no subir al repo
-public/data.json
-
