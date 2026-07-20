@@ -247,23 +247,45 @@ function CluesChart({ porEntidad }: { porEntidad: EntidadChart[] }) {
   );
 }
 
-function EntidadesChart({ porEntidad }: { porEntidad: EntidadChart[] }) {
-  const data = [...porEntidad]
-    .sort((a, b) => b.unidades - a.unidades)
-    .map((e) => ({
-      entidad: e.entidad.length > 10 ? e.entidad.slice(0, 10) + '.' : e.entidad,
-      unidades: e.unidades,
-    }));
+function EstadosMenosInsumos({ porEntidad }: { porEntidad: EntidadChart[] }) {
+  const sorted = [...porEntidad].sort((a, b) => a.pctLlenado - b.pctLlenado);
+  const bottom = sorted.slice(0, 10);
+
+  // Colores de rojo → ámbar → verde según posición
+  const COLORS = ['#dc2626', '#ef4444', '#f97316', '#fb923c', '#f59e0b',
+                  '#eab308', '#84cc16', '#22c55e', '#16a34a', '#15803d'];
+
+  const data = bottom.map((e, i) => ({
+    entidad: e.entidad.length > 18 ? e.entidad.slice(0, 18) + '.' : e.entidad,
+    entidadFull: e.entidad,
+    pct: e.pctLlenado,
+    fill: COLORS[Math.min(i, COLORS.length - 1)],
+  }));
+
   return (
-    <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 50 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-        <XAxis dataKey="entidad" angle={-35} textAnchor="end" tick={{ fontSize: 10, fill: '#9CA3AF' }} height={60} />
-        <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [formatTooltipNumber(v), 'Unidades']} cursor={{ fill: '#FFFBEB' }} />
-        <Bar dataKey="unidades" fill="#A57F2C" radius={[4, 4, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="space-y-3">
+      <p className="text-xs text-gray-400">Estados con menor porcentaje de insumos reportados (peor a mejor)</p>
+      <ResponsiveContainer width="100%" height={290}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 48, left: 4, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
+          <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} domain={[0, 100]} />
+          <YAxis type="category" dataKey="entidad" tick={{ fontSize: 10, fill: '#6B7280' }} width={120} />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            labelFormatter={(_label, payload) =>
+              (payload?.[0] as { payload?: { entidadFull?: string } } | undefined)?.payload?.entidadFull ?? _label
+            }
+            formatter={(v: unknown) => [`${v}%`, '% insumos llenados']}
+            cursor={{ fill: '#FEF2F2' }}
+          />
+          <Bar dataKey="pct" radius={[0, 4, 4, 0]}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.fill} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -621,8 +643,8 @@ export function StatCards({
         <ChartCard title="% de llenado por estado" subtitle="Porcentaje de campos respondidos sobre el total esperado">
           <PctLlenadoChart porEntidad={porEntidad} globalPct={stats.pctLlenado} />
         </ChartCard>
-        <ChartCard title="Unidades por entidad" subtitle="Total de unidades capturadas ordenadas de mayor a menor">
-          <EntidadesChart porEntidad={porEntidad} />
+        <ChartCard title="Estados con menos insumos reportados" subtitle="Top 10 estados con menor % de campos respondidos (peor a mejor)">
+          <EstadosMenosInsumos porEntidad={porEntidad} />
         </ChartCard>
         <ChartCard title="Unidades con y sin internet" subtitle="Distribución de conectividad sobre el total de CLUES esperadas">
           <InternetChart internetPie={internetPie} />
