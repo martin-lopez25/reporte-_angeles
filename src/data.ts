@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { CellValue, DataRow, TablasFormulario } from './types';
+import type { CellValue, CluesGeoItem, DataRow, TablasFormulario } from './types';
 
 const SHEET_ID = '1maRNGDuU9rEFWZLgMdhJS1waAnJxl6ENntm-nyD0tq8';
 const GID = '1765182479';
@@ -28,6 +28,21 @@ async function fetchBaseClues(): Promise<string[]> {
   }
 
   return [];
+}
+
+async function fetchCluesGeo(): Promise<CluesGeoItem[]> {
+  const ts = Date.now();
+  try {
+    const response = await fetch(`${import.meta.env.BASE_URL}clues_geo.json?_cb=${ts}`);
+    if (!response.ok) return [];
+    const payload = await response.json();
+    if (!Array.isArray(payload)) return [];
+    return payload.filter(
+      (r) => typeof r.lat === 'number' && typeof r.lng === 'number' && r.clues_imb,
+    ) as CluesGeoItem[];
+  } catch {
+    return [];
+  }
 }
 
 async function fetchTablaUnidades(): Promise<Set<string>> {
@@ -270,16 +285,18 @@ function buildTables(
     resultado,
     resumen,
     resumenEntidad: [...resumenEntidadMap.values()],
+    cluesGeo: [],
   };
 }
 
 export async function cargarTablasFormulario(): Promise<{ tablas: TablasFormulario; fetchedAt: Date }> {
-  const [baseAn, baseClues, baseMeta, tablaUnidades] = await Promise.all([
+  const [baseAn, baseClues, baseMeta, tablaUnidades, cluesGeo] = await Promise.all([
     fetchBaseAn(),
     fetchBaseClues(),
     fetchBaseMeta(),
     fetchTablaUnidades(),
+    fetchCluesGeo(),
   ]);
   const tablas = buildTables(baseAn, baseClues, baseMeta, tablaUnidades);
-  return { tablas, fetchedAt: new Date() };
+  return { tablas: { ...tablas, cluesGeo }, fetchedAt: new Date() };
 }

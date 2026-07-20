@@ -1,6 +1,17 @@
 export type CellValue = string | number | boolean | null;
 export type DataRow = Record<string, CellValue>;
 
+export interface CluesGeoItem {
+  clues_imb: string;
+  nombre_de_la_unidad: string;
+  entidad: string;
+  lat: number;
+  lng: number;
+  internet: boolean;
+  consultorios?: number;
+  pct_llenado?: number;
+}
+
 export interface TablasFormulario {
   baseClues: string[];
   baseMeta: {
@@ -12,6 +23,7 @@ export interface TablasFormulario {
   resultado: DataRow[];
   resumen: DataRow[];
   resumenEntidad: DataRow[];
+  cluesGeo: CluesGeoItem[];
 }
 
 export interface DashboardStats {

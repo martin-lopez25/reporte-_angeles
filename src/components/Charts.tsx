@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import {
   BarChart,
   Bar,
@@ -14,14 +14,17 @@ import {
   ComposedChart,
   Line,
 } from 'recharts';
-import { Layers3, Building2, Globe, ClipboardList, X } from 'lucide-react';
-import type { DashboardStats, EntidadChart, InternetPieItem, TopFaltanteChart } from '../types';
+import { Layers3, Building2, Globe, ClipboardList, X, MapPin } from 'lucide-react';
+import maplibregl from 'maplibre-gl';
+import type { DashboardStats, CluesGeoItem, EntidadChart, InternetPieItem, TopFaltanteChart } from '../types';
 
 interface ChartsProps {
   stats: DashboardStats;
   internetPie: InternetPieItem[];
   porEntidad: EntidadChart[];
   topFaltantes: TopFaltanteChart[];
+  cluesGeo?: CluesGeoItem[];
+  resultado?: DataRow[];
 }
 
 const PIE_COLORS = ['#1A6B5E', '#A57F2C'];
@@ -422,12 +425,165 @@ function CardModal({
   );
 }
 
+/* ─── Mapa Modal ─── */
+
+function buildPopupHTML(clues: string, nombre: string, entidad: string, internet: number, consultorios: number, pct: number) {
+  const color = internet === 1 ? '#0d9488' : '#d97706';
+  return `<div style="font-family:system-ui;padding:4px 0;min-width:200px">
+    <div style="font-size:11px;font-weight:700;color:#065f46;margin-bottom:3px">${clues}</div>
+    <div style="font-size:12px;font-weight:600;color:#111827;margin-bottom:2px;line-height:1.3">${nombre}</div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">${entidad}</div>
+    <div style="display:flex;gap:12px;margin-bottom:4px">
+      <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">% Llenado</div>
+        <div style="font-size:16px;font-weight:900;color:#065f46">${pct}%</div></div>
+      <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">Consultorios</div>
+        <div style="font-size:16px;font-weight:900;color:#374151">${consultorios}</div></div>
+    </div>
+    <div style="font-size:11px;color:${color};font-weight:600">${internet === 1 ? '● Con internet' : '● Sin internet'}</div>
+  </div>`;
+}
+
+function MapModal({ onClose, porEntidad, cluesGeo = [] }: {
+  onClose: () => void;
+  porEntidad: EntidadChart[];
+  cluesGeo?: CluesGeoItem[];
+}) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const cluesGeoRef = useRef(cluesGeo);
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: 'https://tiles.openfreemap.org/styles/positron',
+      center: [-102, 23.5],
+      zoom: 4.8,
+      attributionControl: false,
+    });
+    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+
+    if (cluesGeoRef.current.length > 0) {
+      const data = cluesGeoRef.current;
+      const addLayers = () => {
+        if (map.getSource('clues')) return;
+        map.addSource('clues', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: data.map((u) => ({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [u.lng, u.lat] },
+              properties: {
+                clues_imb: u.clues_imb,
+                nombre: u.nombre_de_la_unidad,
+                entidad: u.entidad,
+                internet: u.internet ? 1 : 0,
+                consultorios: Math.round(u.consultorios ?? 0),
+                pct_llenado: u.pct_llenado ?? 0,
+              },
+            })),
+          },
+        });
+
+        map.addLayer({ id: 'clues-halo', type: 'circle', source: 'clues', paint: {
+          'circle-radius': 9,
+          'circle-color': ['case', ['==', ['get', 'internet'], 1], '#14b8a6', '#f59e0b'],
+          'circle-opacity': 0.18, 'circle-stroke-width': 0,
+        }});
+        map.addLayer({ id: 'clues-circles', type: 'circle', source: 'clues', paint: {
+          'circle-radius': 5,
+          'circle-color': ['case', ['==', ['get', 'internet'], 1], '#0d9488', '#d97706'],
+          'circle-stroke-width': 1.5, 'circle-stroke-color': '#ffffff', 'circle-opacity': 0.95,
+        }});
+
+        const popup = new maplibregl.Popup({ closeButton: false, offset: 10, maxWidth: '280px' });
+        map.on('mouseenter', 'clues-circles', (e) => {
+          map.getCanvas().style.cursor = 'pointer';
+          const feat = e.features?.[0];
+          if (!feat) return;
+          const p = feat.properties as Record<string, unknown>;
+          popup.setLngLat(e.lngLat)
+            .setHTML(buildPopupHTML(
+              String(p['clues_imb']), String(p['nombre']), String(p['entidad']),
+              Number(p['internet']), Number(p['consultorios']), Number(p['pct_llenado'])
+            ))
+            .addTo(map);
+        });
+        map.on('mouseleave', 'clues-circles', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
+      };
+
+      if (map.isStyleLoaded()) addLayers();
+      else map.on('load', addLayers);
+    }
+
+    return () => map.remove();
+  }, []);
+
+  const total = porEntidad.reduce((s, e) => s + e.unidades, 0);
+  const avg = porEntidad.length ? Math.round(total / porEntidad.length) : 0;
+  const topEstado = [...porEntidad].sort((a, b) => b.unidades - a.unidades)[0];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" style={{ height: '84vh' }} onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-gray-100 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+              <MapPin className="h-5 w-5" strokeWidth={2.2} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-800">Cobertura CLUES — Mapa Nacional</h3>
+              <p className="mt-0.5 text-xs text-gray-400">Unidades de salud IMSS Bienestar distribuidas por entidad federativa</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mr-3">
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-right">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-500">Total unidades</p>
+              <p className="text-lg font-black text-emerald-700">{total.toLocaleString('es-MX')}</p>
+            </div>
+            <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-right">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-amber-500">Prom. por estado</p>
+              <p className="text-lg font-black text-amber-700">{avg.toLocaleString('es-MX')}</p>
+            </div>
+            {topEstado && (
+              <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-2 text-right">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Mayor cobertura</p>
+                <p className="text-sm font-black text-gray-700 leading-tight">{topEstado.entidad.length > 14 ? topEstado.entidad.slice(0, 14) + '.' : topEstado.entidad}</p>
+              </div>
+            )}
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Mapa */}
+        <div className="relative flex-1 overflow-hidden">
+          <div ref={mapContainerRef} className="absolute inset-0" />
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center gap-5 border-t border-gray-100 bg-gray-50 px-6 py-2.5 text-xs text-gray-500">
+          <span className="font-semibold text-gray-600">Leyenda:</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-teal-500" />Con internet</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" />Sin internet</span>
+          <span className="ml-auto text-gray-400">Pasa el cursor sobre un punto para ver detalles</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 export function StatCards({
   stats,
   internetPie,
   porEntidad,
+  cluesGeo = [],
 }: ChartsProps) {
   const [activeCard, setActiveCard] = useState<StatKey | null>(null);
+  const [showMap, setShowMap] = useState(false);
 
   const values: Record<StatKey, { value: number; expected?: number; helper?: string }> = {
     cluesCapturadas: { value: stats.cluesCapturadas, expected: stats.baseCluesEsperadas },
@@ -476,11 +632,33 @@ export function StatCards({
         ))}
       </div>
 
+      {/* Card de mapa */}
+      <button
+        onClick={() => setShowMap(true)}
+        className="group mt-1 w-full cursor-pointer overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-5 text-left transition-all hover:scale-[1.01] hover:shadow-lg active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 transition-transform duration-300 group-hover:rotate-3 group-hover:scale-110">
+            <MapPin className="h-6 w-6" strokeWidth={2.2} />
+          </div>
+          <div className="flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Geolocalización</p>
+            <p className="text-xl font-black text-emerald-700">Explorar en Mapa</p>
+            <p className="text-xs text-gray-500">Visualiza las unidades CLUES distribuidas en el territorio nacional</p>
+          </div>
+          <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
+            Abrir mapa →
+          </span>
+        </div>
+      </button>
+
       {active && activeCard && (
         <CardModal title={active.title} subtitle={active.subtitle} onClose={() => setActiveCard(null)}>
           {active.chart}
         </CardModal>
       )}
+
+      {showMap && <MapModal onClose={() => setShowMap(false)} porEntidad={porEntidad} cluesGeo={cluesGeo} />}
     </>
   );
 }

@@ -4,7 +4,7 @@ import { Header } from './components/Header';
 import { Charts, StatCards } from './components/Charts';
 import { DataTable } from './components/DataTable';
 import { cargarTablasFormulario } from './data';
-import type { DashboardStats, DataRow, EntidadChart, InternetPieItem, TopFaltanteChart } from './types';
+import type { DashboardStats, DataRow, EntidadChart, InternetPieItem, TopFaltanteChart, CluesGeoItem } from './types';
 
 type TabKey = 'cruda' | 'clues' | 'estado';
 
@@ -127,6 +127,7 @@ export default function App() {
   const [resultado, setResultado] = useState<DataRow[]>([]);
   const [resumen, setResumen] = useState<DataRow[]>([]);
   const [resumenEntidad, setResumenEntidad] = useState<DataRow[]>([]);
+  const [cluesGeo, setCluesGeo] = useState<CluesGeoItem[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   async function load() {
@@ -140,6 +141,7 @@ export default function App() {
       setResultado(tablas.resultado);
       setResumen(tablas.resumen);
       setResumenEntidad(tablas.resumenEntidad);
+      setCluesGeo(tablas.cluesGeo);
 
       const updatedFromScript = parseDateValue(tablas.baseMeta.scriptLastRunAt);
       setLastUpdate(updatedFromScript ?? inferDataUpdatedAt(tablas.baseAn));
@@ -357,7 +359,7 @@ export default function App() {
           <div className="card border-imss-wine/30 bg-imss-wine/5 p-8 text-imss-wine">Error: {error}</div>
         ) : (
           <>
-            <StatCards stats={stats} internetPie={internetPie} porEntidad={porEntidad} topFaltantes={topFaltantes} />
+            <StatCards stats={stats} internetPie={internetPie} porEntidad={porEntidad} topFaltantes={topFaltantes} cluesGeo={cluesGeo} resultado={resultado} />
 
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
