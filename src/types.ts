@@ -23,7 +23,7 @@ export interface DashboardStats {
   cluesCapturadas: number;
   entidadesCapturadas: number;
   unidadesInternet: number;
-  consultoriosLevantados: number;
+  pctLlenado: number;
 }
 
 export interface TopUnidadChart {
@@ -47,4 +47,5 @@ export interface EntidadChart {
   unidades: number;
   consultoriosHabilitados: number;
   consultoriosLevantados: number;
+  pctLlenado: number;
 }

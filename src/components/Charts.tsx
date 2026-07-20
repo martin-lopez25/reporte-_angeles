@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,8 +11,10 @@ import {
   Pie,
   Cell,
   Legend,
+  ComposedChart,
+  Line,
 } from 'recharts';
-import { Database, Layers3, Building2, Globe, ClipboardList } from 'lucide-react';
+import { Layers3, Building2, Globe, ClipboardList, X } from 'lucide-react';
 import type { DashboardStats, EntidadChart, InternetPieItem, TopFaltanteChart } from '../types';
 
 interface ChartsProps {
@@ -43,7 +45,7 @@ type StatKey =
   | 'cluesCapturadas'
   | 'entidadesCapturadas'
   | 'unidadesInternet'
-  | 'consultoriosLevantados';
+  | 'pctLlenado';
 
 interface StatCardDef {
   icon: typeof Database;
@@ -54,6 +56,7 @@ interface StatCardDef {
   iconColor: string;
   valueColor: string;
   border: string;
+  isPercent?: boolean;
 }
 
 const STAT_CARDS: StatCardDef[] = [
@@ -89,13 +92,14 @@ const STAT_CARDS: StatCardDef[] = [
   },
   {
     icon: ClipboardList,
-    label: 'CONSULTORIOS LEVANTADOS',
-    key: 'consultoriosLevantados',
+    label: '% LLENADO FORMULARIO',
+    key: 'pctLlenado',
     bg: 'bg-teal-50',
     iconBg: 'bg-teal-100',
     iconColor: 'text-teal-600',
     valueColor: 'text-teal-700',
     border: 'border-teal-200',
+    isPercent: true,
   },
 ];
 
@@ -109,17 +113,25 @@ function StatCard({
   value,
   expected,
   helper,
+  onClick,
 }: {
   def: StatCardDef;
   value: number;
   expected?: number;
   helper?: string;
+  onClick?: () => void;
 }) {
-  const { icon: Icon, label, bg, iconBg, iconColor, valueColor, border } = def;
-  const pct = typeof expected === 'number' ? pctLabel(value, expected) : null;
+  const { icon: Icon, label, bg, iconBg, iconColor, valueColor, border, isPercent } = def;
+  const displayValue = isPercent
+    ? `${value.toFixed(1)}%`
+    : (typeof expected === 'number' ? pctLabel(value, expected) : value.toLocaleString('es-MX'));
   return (
     <div
-      className={`group relative cursor-default overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg ${border} ${bg}`}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
+      className={`group relative cursor-pointer overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg active:scale-[0.98] ${border} ${bg}`}
     >
       <div className="absolute -right-4 -top-4 opacity-10 transition-transform duration-500 group-hover:scale-125 group-hover:opacity-20">
         <Icon className="h-20 w-20" />
@@ -131,16 +143,20 @@ function StatCard({
           <Icon className="h-5 w-5" strokeWidth={2.2} />
         </div>
       </div>
-      <p className="relative mb-1 text-[10px] font-bold uppercase tracking-widest opacity-70" style={{ color: valueColor === 'text-white' ? '#fff' : undefined }}>
+      <p className="relative mb-1 text-[10px] font-bold uppercase tracking-widest opacity-70">
         <span className={valueColor === 'text-white' ? 'text-white/70' : 'text-gray-500'}>{label}</span>
       </p>
-      <p className={`relative text-3xl font-black tabular-nums ${valueColor}`}>{pct ?? value.toLocaleString('es-MX')}</p>
-      {typeof expected === 'number' ? (
+      <p className={`relative text-3xl font-black tabular-nums ${valueColor}`}>{displayValue}</p>
+      {!isPercent && typeof expected === 'number' ? (
         <p className="mt-1 text-xs font-medium text-gray-500">
           {value.toLocaleString('es-MX')} de {expected.toLocaleString('es-MX')}
         </p>
       ) : null}
+      {isPercent ? <p className="mt-1 text-xs font-medium text-gray-500">de campos respondidos</p> : null}
       {helper ? <p className="mt-1 text-xs text-gray-500">{helper}</p> : null}
+      <span className="absolute bottom-2 right-3 text-[9px] font-semibold uppercase tracking-widest text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
+        Ver gráfica →
+      </span>
     </div>
   );
 }
@@ -167,40 +183,305 @@ function ChartCard({
   );
 }
 
+/* ─── Gráficas por card ─── */
+
+function CluesChart({ porEntidad }: { porEntidad: EntidadChart[] }) {
+  const sorted = [...porEntidad].sort((a, b) => b.unidades - a.unidades);
+  const totalUnidades = sorted.reduce((s, e) => s + e.unidades, 0);
+  const avgUnidades = sorted.length ? Math.round(totalUnidades / sorted.length) : 0;
+
+  const CLUES_COLORS = ['#064E3B', '#065F46', '#047857', '#059669', '#10B981', '#34D399', '#6EE7B7'];
+  const getBarColor = (rank: number, total: number) => {
+    const t = total > 1 ? rank / (total - 1) : 0;
+    return CLUES_COLORS[Math.min(Math.floor(t * (CLUES_COLORS.length - 1)), CLUES_COLORS.length - 1)];
+  };
+
+  const data = sorted.map((e, i) => ({
+    entidad: e.entidad.length > 12 ? e.entidad.slice(0, 12) + '.' : e.entidad,
+    entidadFull: e.entidad,
+    unidades: e.unidades,
+    pct: e.pctLlenado,
+    rank: i,
+  }));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-8 border-b border-gray-100 pb-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total unidades</p>
+          <p className="text-2xl font-black text-emerald-700">{totalUnidades.toLocaleString('es-MX')}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Promedio por estado</p>
+          <p className="text-2xl font-black text-amber-600">{avgUnidades.toLocaleString('es-MX')}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Estados</p>
+          <p className="text-2xl font-black text-gray-700">{sorted.length}</p>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={300}>
+        <ComposedChart data={data} margin={{ top: 4, right: 40, left: 0, bottom: 55 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+          <XAxis dataKey="entidad" angle={-35} textAnchor="end" tick={{ fontSize: 10, fill: '#9CA3AF' }} height={65} />
+          <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
+          <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} domain={[0, 100]} />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            labelFormatter={(_label, payload) =>
+              (payload?.[0] as { payload?: { entidadFull?: string } } | undefined)?.payload?.entidadFull ?? _label
+            }
+            formatter={(v: unknown, name: string) => [
+              name === 'pct' ? `${v}%` : formatTooltipNumber(v),
+              name === 'pct' ? '% llenado' : 'Unidades capturadas',
+            ]}
+            cursor={{ fill: '#F0FDF4' }}
+          />
+          <Legend
+            verticalAlign="top"
+            iconType="circle"
+            wrapperStyle={{ fontSize: '11px', paddingBottom: '8px', color: '#6B7280' }}
+            formatter={(value) => value === 'pct' ? '% llenado del formulario' : 'Unidades capturadas'}
+          />
+          <Bar yAxisId="left" dataKey="unidades" name="unidades" radius={[4, 4, 0, 0]}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={getBarColor(i, data.length)} />
+            ))}
+          </Bar>
+          <Line yAxisId="right" type="monotone" dataKey="pct" name="pct"
+            stroke="#A57F2C" strokeWidth={2.5}
+            dot={{ fill: '#A57F2C', r: 3.5 }} activeDot={{ r: 6 }} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function EntidadesChart({ porEntidad }: { porEntidad: EntidadChart[] }) {
+  const data = [...porEntidad]
+    .sort((a, b) => b.unidades - a.unidades)
+    .map((e) => ({
+      entidad: e.entidad.length > 10 ? e.entidad.slice(0, 10) + '.' : e.entidad,
+      unidades: e.unidades,
+    }));
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <BarChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 50 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+        <XAxis dataKey="entidad" angle={-35} textAnchor="end" tick={{ fontSize: 10, fill: '#9CA3AF' }} height={60} />
+        <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
+        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [formatTooltipNumber(v), 'Unidades']} cursor={{ fill: '#FFFBEB' }} />
+        <Bar dataKey="unidades" fill="#A57F2C" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function InternetChart({ internetPie }: { internetPie: InternetPieItem[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <PieChart>
+        <Pie data={internetPie} cx="50%" cy="45%" outerRadius={110} innerRadius={60} dataKey="value" paddingAngle={2} stroke="none">
+          {internetPie.map((_, i) => (
+            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [formatTooltipNumber(v), 'Unidades']} />
+        <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#6B7280' }} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+function ConsultoriosChart({ porEntidad }: { porEntidad: EntidadChart[] }) {
+  const data = porEntidad.map((e) => ({
+    entidad: e.entidad.length > 10 ? e.entidad.slice(0, 10) + '.' : e.entidad,
+    habilitados: e.consultoriosHabilitados,
+    levantados: e.consultoriosLevantados,
+    pct: e.consultoriosHabilitados > 0
+      ? +((e.consultoriosLevantados / e.consultoriosHabilitados) * 100).toFixed(1)
+      : 0,
+  }));
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <ComposedChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 50 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+        <XAxis dataKey="entidad" angle={-35} textAnchor="end" tick={{ fontSize: 10, fill: '#9CA3AF' }} height={60} />
+        <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
+        <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
+        <Tooltip contentStyle={tooltipStyle} formatter={(v: number, name: string) => [
+          name === 'pct' ? `${v}%` : formatTooltipNumber(v),
+          name === 'pct' ? '% levantado' : name === 'habilitados' ? 'Habilitados' : 'Levantados',
+        ]} cursor={{ fill: '#F0FDFA' }} />
+        <Bar yAxisId="left" dataKey="habilitados" name="habilitados" fill="#99F6E4" radius={[4, 4, 0, 0]} />
+        <Bar yAxisId="left" dataKey="levantados" name="levantados" fill="#0D9488" radius={[4, 4, 0, 0]} />
+        <Line yAxisId="right" type="monotone" dataKey="pct" name="pct" stroke="#A57F2C" strokeWidth={2} dot={{ fill: '#A57F2C', r: 3 }} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+function PctLlenadoChart({ porEntidad, globalPct }: { porEntidad: EntidadChart[]; globalPct: number }) {
+  const sorted = [...porEntidad].sort((a, b) => b.pctLlenado - a.pctLlenado);
+  const avg = sorted.length ? +(sorted.reduce((s, e) => s + e.pctLlenado, 0) / sorted.length).toFixed(1) : 0;
+
+  const PCT_COLORS = ['#064E3B', '#065F46', '#047857', '#059669', '#10B981', '#34D399', '#6EE7B7'];
+  const getColor = (rank: number, total: number) => {
+    const t = total > 1 ? rank / (total - 1) : 0;
+    return PCT_COLORS[Math.min(Math.floor(t * (PCT_COLORS.length - 1)), PCT_COLORS.length - 1)];
+  };
+
+  const data = sorted.map((e, i) => ({
+    entidad: e.entidad.length > 12 ? e.entidad.slice(0, 12) + '.' : e.entidad,
+    entidadFull: e.entidad,
+    pct: e.pctLlenado,
+    rank: i,
+  }));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-8 border-b border-gray-100 pb-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Global</p>
+          <p className="text-2xl font-black text-teal-700">{globalPct.toFixed(1)}%</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Promedio por estado</p>
+          <p className="text-2xl font-black text-amber-600">{avg}%</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Mayor llenado</p>
+          <p className="text-2xl font-black text-emerald-700">{sorted[0]?.pctLlenado.toFixed(1) ?? '—'}%</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Menor llenado</p>
+          <p className="text-2xl font-black text-rose-600">{sorted[sorted.length - 1]?.pctLlenado.toFixed(1) ?? '—'}%</p>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={290}>
+        <BarChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 55 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+          <XAxis dataKey="entidad" angle={-35} textAnchor="end" tick={{ fontSize: 10, fill: '#9CA3AF' }} height={65} />
+          <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} domain={[0, 100]} />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            labelFormatter={(_label, payload) =>
+              (payload?.[0] as { payload?: { entidadFull?: string } } | undefined)?.payload?.entidadFull ?? _label
+            }
+            formatter={(v: unknown) => [`${v}%`, '% llenado']}
+            cursor={{ fill: '#F0FDFA' }}
+          />
+          <Bar dataKey="pct" name="% llenado" radius={[4, 4, 0, 0]}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={getColor(i, data.length)} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ─── Modal ─── */
+
+function CardModal({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h3 className="text-base font-bold text-gray-800">{title}</h3>
+            <p className="mt-0.5 text-xs text-gray-400">{subtitle}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-4 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function StatCards({
   stats,
+  internetPie,
+  porEntidad,
 }: ChartsProps) {
+  const [activeCard, setActiveCard] = useState<StatKey | null>(null);
+
   const values: Record<StatKey, { value: number; expected?: number; helper?: string }> = {
+    cluesCapturadas: { value: stats.cluesCapturadas, expected: stats.baseCluesEsperadas },
+    entidadesCapturadas: { value: stats.entidadesCapturadas, expected: stats.baseEntidadesEsperadas },
+    unidadesInternet: { value: stats.unidadesInternet, expected: stats.baseCluesEsperadas },
+    pctLlenado: { value: stats.pctLlenado },
+  };
+
+  const modalContent: Record<StatKey, { title: string; subtitle: string; chart: ReactNode }> = {
     cluesCapturadas: {
-      value: stats.cluesCapturadas,
-      expected: stats.baseCluesEsperadas,
+      title: 'Cobertura CLUES por entidad',
+      subtitle: 'Unidades capturadas y % llenado del formulario por estado',
+      chart: <CluesChart porEntidad={porEntidad} />,
     },
     entidadesCapturadas: {
-      value: stats.entidadesCapturadas,
-      expected: stats.baseEntidadesEsperadas,
+      title: 'Unidades por entidad',
+      subtitle: 'Total de unidades capturadas ordenadas de mayor a menor',
+      chart: <EntidadesChart porEntidad={porEntidad} />,
     },
     unidadesInternet: {
-      value: stats.unidadesInternet,
-      expected: stats.baseCluesEsperadas,
+      title: 'Unidades con y sin internet',
+      subtitle: 'Distribución de conectividad sobre el total de CLUES esperadas',
+      chart: <InternetChart internetPie={internetPie} />,
     },
-    consultoriosLevantados: {
-      value: stats.consultoriosLevantados,
-      expected: stats.baseCluesEsperadas,
+    pctLlenado: {
+      title: '% de llenado del formulario por estado',
+      subtitle: 'Porcentaje de campos respondidos sobre el total esperado, ordenado de mayor a menor',
+      chart: <PctLlenadoChart porEntidad={porEntidad} globalPct={stats.pctLlenado} />,
     },
   };
 
+  const active = activeCard ? modalContent[activeCard] : null;
+
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {STAT_CARDS.map((def) => (
-        <StatCard
-          key={def.key}
-          def={def}
-          value={values[def.key].value}
-          expected={values[def.key].expected}
-          helper={values[def.key].helper}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {STAT_CARDS.map((def) => (
+          <StatCard
+            key={def.key}
+            def={def}
+            value={values[def.key].value}
+            expected={values[def.key].expected}
+            helper={values[def.key].helper}
+            onClick={() => setActiveCard(def.key)}
+          />
+        ))}
+      </div>
+
+      {active && activeCard && (
+        <CardModal title={active.title} subtitle={active.subtitle} onClose={() => setActiveCard(null)}>
+          {active.chart}
+        </CardModal>
+      )}
+    </>
   );
 }
 

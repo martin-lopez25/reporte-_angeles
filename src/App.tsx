@@ -207,7 +207,18 @@ export default function App() {
       cluesCapturadas: cluesCapturadas.size,
       entidadesCapturadas: entidadesCapturadas.size,
       unidadesInternet: cluesConInternet.size,
-      consultoriosLevantados: cluesConConsultorio.size,
+      pctLlenado: (() => {
+        const FIXED = new Set(['entidad', 'clues_imb', 'nombre_de_la_unidad', 'internet', 'consultorios_habilitados', 'consultorio', 'turno_consultorio']);
+        let filled = 0, total = 0;
+        for (const row of resultado) {
+          for (const [key, value] of Object.entries(row)) {
+            if (FIXED.has(key)) continue;
+            total++;
+            if (value !== null && value !== undefined && value !== '' && value !== 0 && value !== false) filled++;
+          }
+        }
+        return total > 0 ? +(filled / total * 100).toFixed(1) : 0;
+      })(),
     };
   }, [baseAn, baseClues, baseMeta, resultado, resumen]);
 
@@ -257,7 +268,9 @@ export default function App() {
   }, [stats]);
 
   const porEntidad = useMemo<EntidadChart[]>(() => {
-    const map = new Map<string, EntidadChart>();
+    const FIXED_COLS = new Set(['entidad', 'clues_imb', 'nombre_de_la_unidad', 'internet', 'consultorios_habilitados', 'consultorio', 'turno_consultorio']);
+
+    const map = new Map<string, EntidadChart & { _filledSum: number; _totalSum: number }>();
 
     for (const row of resumen) {
       const entidad = toText(row.entidad) || 'Sin entidad';
@@ -267,6 +280,9 @@ export default function App() {
           unidades: 0,
           consultoriosHabilitados: 0,
           consultoriosLevantados: 0,
+          pctLlenado: 0,
+          _filledSum: 0,
+          _totalSum: 0,
         });
       }
 
@@ -278,8 +294,27 @@ export default function App() {
       agg.consultoriosLevantados += toNumber(row.consultorio);
     }
 
-    return [...map.values()].sort((a, b) => b.unidades - a.unidades);
-  }, [resumen]);
+    for (const row of resultado) {
+      const entidad = toText(row.entidad) || 'Sin entidad';
+      const agg = map.get(entidad);
+      if (!agg) continue;
+
+      for (const [key, value] of Object.entries(row)) {
+        if (FIXED_COLS.has(key)) continue;
+        agg._totalSum += 1;
+        if (value !== null && value !== undefined && value !== '' && value !== 0 && value !== false) {
+          agg._filledSum += 1;
+        }
+      }
+    }
+
+    return [...map.values()]
+      .map(({ _filledSum, _totalSum, ...rest }) => ({
+        ...rest,
+        pctLlenado: _totalSum > 0 ? +(_filledSum / _totalSum * 100).toFixed(1) : 0,
+      }))
+      .sort((a, b) => b.unidades - a.unidades);
+  }, [resumen, resultado]);
 
   const tableColumns = (rows: DataRow[], includeFechaRegistro = true) => {
     if (!rows.length) return [];
@@ -378,7 +413,6 @@ export default function App() {
               )}
             </div>
 
-            <Charts stats={stats} internetPie={internetPie} porEntidad={porEntidad} topFaltantes={topFaltantes} />
           </>
         )}
       </main>
