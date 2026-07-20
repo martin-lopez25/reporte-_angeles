@@ -113,7 +113,9 @@ function formatCellValue(value: unknown, key?: string): string {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<TabKey>('cruda');
+  const [tab, setTab] = useState<TabKey>('clues');
+  const [crudaUnlocked, setCrudaUnlocked] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [baseAn, setBaseAn] = useState<DataRow[]>([]);
@@ -290,15 +292,28 @@ export default function App() {
       }));
   };
 
-  const tabs: { key: TabKey; label: string; icon: typeof Database; count: number }[] = [
+  const handleLogoClick = () => {
+    setLogoClickCount((prev) => {
+      const next = prev + 1;
+      if (next >= 6) {
+        setCrudaUnlocked(true);
+        return 0;
+      }
+      return next;
+    });
+  };
+
+  const allTabs: { key: TabKey; label: string; icon: typeof Database; count: number }[] = [
     { key: 'cruda', label: 'Base Cruda', icon: Database, count: baseAn.length },
     { key: 'clues', label: 'Por CLUES', icon: Building2, count: resultado.length },
     { key: 'estado', label: 'Por Estado', icon: Layers3, count: resumenEntidad.length },
   ];
 
+  const tabs = allTabs.filter(({ key }) => key !== 'cruda' || crudaUnlocked);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header lastUpdateLabel={lastUpdateLabel} />
+      <Header lastUpdateLabel={lastUpdateLabel} onLogoClick={handleLogoClick} />
 
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         {loading ? (

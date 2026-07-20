@@ -2,7 +2,7 @@ import { Clock } from 'lucide-react';
 
 const LOGO_URL = 'https://imssbienestar.gob.mx/assets/img/imb_b.svg';
 
-export function Header({ lastUpdateLabel }: { lastUpdateLabel: string }) {
+export function Header({ lastUpdateLabel, onLogoClick }: { lastUpdateLabel: string; onLogoClick?: () => void }) {
 
   return (
     <>
@@ -12,7 +12,8 @@ export function Header({ lastUpdateLabel }: { lastUpdateLabel: string }) {
             <img
               src={LOGO_URL}
               alt="IMSS Bienestar"
-              className="h-9 w-auto brightness-0 saturate-100 [filter:invert(10%)_sepia(79%)_saturate(665%)_hue-rotate(120deg)_brightness(41%)_contrast(104%)]"
+              onClick={onLogoClick}
+              className="h-9 w-auto cursor-pointer brightness-0 saturate-100 [filter:invert(10%)_sepia(79%)_saturate(665%)_hue-rotate(120deg)_brightness(41%)_contrast(104%)]" style={{ userSelect: 'none' }}
             />
             <div className="leading-none">
               <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Gobierno de Mexico</p>

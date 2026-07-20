@@ -30,6 +30,24 @@ async function fetchBaseClues(): Promise<string[]> {
   return [];
 }
 
+async function fetchTablaUnidades(): Promise<Set<string>> {
+  const ts = Date.now();
+
+  try {
+    const response = await fetch(`${import.meta.env.BASE_URL}tabla_unidades.json?_cb=${ts}`);
+    if (!response.ok) return new Set();
+
+    const payload = await response.json();
+    if (Array.isArray(payload)) {
+      return new Set(payload.map((v: unknown) => String(v).trim()).filter(Boolean));
+    }
+  } catch {
+    // Si no existe el archivo, no se filtra.
+  }
+
+  return new Set();
+}
+
 async function fetchBaseMeta(): Promise<{ cluesTotal: number; entidadesEsperadas: number; scriptLastRunAt?: string }> {
   const ts = Date.now();
 
@@ -38,7 +56,7 @@ async function fetchBaseMeta(): Promise<{ cluesTotal: number; entidadesEsperadas
     if (!response.ok) return { cluesTotal: 0, entidadesEsperadas: 0 };
 
     const payload = await response.json();
-    const cluesTotal = Number(payload?.clues_total ?? 0);
+    const cluesTotal = Number(payload?.clues_unicas ?? payload?.clues_total ?? 0);
     const entidadesEsperadas = Number(payload?.entidades_esperadas ?? 0);
 
     return {
@@ -104,6 +122,7 @@ function buildTables(
   baseAn: DataRow[],
   baseClues: string[],
   baseMeta: { cluesTotal: number; entidadesEsperadas: number; scriptLastRunAt?: string },
+  tablaUnidades: Set<string>,
 ): TablasFormulario {
   const unidadByClues = new Map<string, DataRow>();
 
@@ -158,7 +177,12 @@ function buildTables(
 
   const sortedDynamicColumns = [...dynamicColumns].sort();
 
-  const resultado = [...resultadoMap.values()].map((row) => {
+  const resultadoRaw = [...resultadoMap.values()];
+  const resultadoFiltrado = tablaUnidades.size > 0
+    ? resultadoRaw.filter((row) => tablaUnidades.has(toText(row.clues_imb)))
+    : resultadoRaw;
+
+  const resultado = resultadoFiltrado.map((row) => {
     const enriched: DataRow = { ...row };
 
     for (const col of sortedDynamicColumns) {
@@ -250,7 +274,12 @@ function buildTables(
 }
 
 export async function cargarTablasFormulario(): Promise<{ tablas: TablasFormulario; fetchedAt: Date }> {
-  const [baseAn, baseClues, baseMeta] = await Promise.all([fetchBaseAn(), fetchBaseClues(), fetchBaseMeta()]);
-  const tablas = buildTables(baseAn, baseClues, baseMeta);
+  const [baseAn, baseClues, baseMeta, tablaUnidades] = await Promise.all([
+    fetchBaseAn(),
+    fetchBaseClues(),
+    fetchBaseMeta(),
+    fetchTablaUnidades(),
+  ]);
+  const tablas = buildTables(baseAn, baseClues, baseMeta, tablaUnidades);
   return { tablas, fetchedAt: new Date() };
 }
