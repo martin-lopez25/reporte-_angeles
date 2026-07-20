@@ -590,6 +590,7 @@ export function StatCards({
   internetPie,
   porEntidad,
   cluesGeo = [],
+  topFaltantes = [],
 }: ChartsProps) {
   const [showMap, setShowMap] = useState(false);
 
@@ -643,8 +644,22 @@ export function StatCards({
         <ChartCard title="% de llenado por estado" subtitle="Porcentaje de campos respondidos sobre el total esperado">
           <PctLlenadoChart porEntidad={porEntidad} globalPct={stats.pctLlenado} />
         </ChartCard>
-        <ChartCard title="Estados con menos insumos reportados" subtitle="Top 10 estados con menor % de campos respondidos (peor a mejor)">
-          <EstadosMenosInsumos porEntidad={porEntidad} />
+        <ChartCard title="Top 10 insumos más frecuentes que faltan" subtitle="Frecuencia de faltantes por equipo/material en consultorios levantados">
+          <ResponsiveContainer width="100%" height={290}>
+            <BarChart data={topFaltantes} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
+              <YAxis type="category" dataKey="item" tick={{ fontSize: 10, fill: '#6B7280' }} width={180} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={(v: unknown, name: string) =>
+                  name === 'pct' ? [`${formatTooltipNumber(v)}%`, '%'] : [formatTooltipNumber(v), 'Faltantes']
+                }
+                cursor={{ fill: '#F9FAFB' }}
+              />
+              <Bar dataKey="faltantes" fill="#A57F2C" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </ChartCard>
         <ChartCard title="Unidades con y sin internet" subtitle="Distribución de conectividad sobre el total de CLUES esperadas">
           <InternetChart internetPie={internetPie} />
