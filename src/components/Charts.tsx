@@ -116,33 +116,23 @@ function StatCard({
   value,
   expected,
   helper,
-  onClick,
 }: {
   def: StatCardDef;
   value: number;
   expected?: number;
   helper?: string;
-  onClick?: () => void;
 }) {
   const { icon: Icon, label, bg, iconBg, iconColor, valueColor, border, isPercent } = def;
   const displayValue = isPercent
     ? `${value.toFixed(1)}%`
     : (typeof expected === 'number' ? pctLabel(value, expected) : value.toLocaleString('es-MX'));
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
-      className={`group relative cursor-pointer overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg active:scale-[0.98] ${border} ${bg}`}
-    >
+    <div className={`group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg ${border} ${bg}`}>
       <div className="absolute -right-4 -top-4 opacity-10 transition-transform duration-500 group-hover:scale-125 group-hover:opacity-20">
         <Icon className="h-20 w-20" />
       </div>
       <div className="relative mb-3 flex items-start justify-between">
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:rotate-3 group-hover:scale-110 ${iconBg} ${iconColor}`}
-        >
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:rotate-3 group-hover:scale-110 ${iconBg} ${iconColor}`}>
           <Icon className="h-5 w-5" strokeWidth={2.2} />
         </div>
       </div>
@@ -157,9 +147,6 @@ function StatCard({
       ) : null}
       {isPercent ? <p className="mt-1 text-xs font-medium text-gray-500">de campos respondidos</p> : null}
       {helper ? <p className="mt-1 text-xs text-gray-500">{helper}</p> : null}
-      <span className="absolute bottom-2 right-3 text-[9px] font-semibold uppercase tracking-widest text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
-        Ver gráfica →
-      </span>
     </div>
   );
 }
@@ -582,7 +569,6 @@ export function StatCards({
   porEntidad,
   cluesGeo = [],
 }: ChartsProps) {
-  const [activeCard, setActiveCard] = useState<StatKey | null>(null);
   const [showMap, setShowMap] = useState(false);
 
   const values: Record<StatKey, { value: number; expected?: number; helper?: string }> = {
@@ -592,33 +578,9 @@ export function StatCards({
     pctLlenado: { value: stats.pctLlenado },
   };
 
-  const modalContent: Record<StatKey, { title: string; subtitle: string; chart: ReactNode }> = {
-    cluesCapturadas: {
-      title: 'Cobertura CLUES por entidad',
-      subtitle: 'Unidades capturadas y % llenado del formulario por estado',
-      chart: <CluesChart porEntidad={porEntidad} />,
-    },
-    entidadesCapturadas: {
-      title: 'Unidades por entidad',
-      subtitle: 'Total de unidades capturadas ordenadas de mayor a menor',
-      chart: <EntidadesChart porEntidad={porEntidad} />,
-    },
-    unidadesInternet: {
-      title: 'Unidades con y sin internet',
-      subtitle: 'Distribución de conectividad sobre el total de CLUES esperadas',
-      chart: <InternetChart internetPie={internetPie} />,
-    },
-    pctLlenado: {
-      title: '% de llenado del formulario por estado',
-      subtitle: 'Porcentaje de campos respondidos sobre el total esperado, ordenado de mayor a menor',
-      chart: <PctLlenadoChart porEntidad={porEntidad} globalPct={stats.pctLlenado} />,
-    },
-  };
-
-  const active = activeCard ? modalContent[activeCard] : null;
-
   return (
     <>
+      {/* Cards de métricas */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {STAT_CARDS.map((def) => (
           <StatCard
@@ -627,12 +589,11 @@ export function StatCards({
             value={values[def.key].value}
             expected={values[def.key].expected}
             helper={values[def.key].helper}
-            onClick={() => setActiveCard(def.key)}
           />
         ))}
       </div>
 
-      {/* Card de mapa */}
+      {/* Botón Explorar en Mapa */}
       <button
         onClick={() => setShowMap(true)}
         className="group mt-1 w-full cursor-pointer overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-5 text-left transition-all hover:scale-[1.01] hover:shadow-lg active:scale-[0.99]"
@@ -652,11 +613,21 @@ export function StatCards({
         </div>
       </button>
 
-      {active && activeCard && (
-        <CardModal title={active.title} subtitle={active.subtitle} onClose={() => setActiveCard(null)}>
-          {active.chart}
-        </CardModal>
-      )}
+      {/* Gráficas siempre visibles */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ChartCard title="Cobertura CLUES por entidad" subtitle="Unidades capturadas y % llenado del formulario por estado">
+          <CluesChart porEntidad={porEntidad} />
+        </ChartCard>
+        <ChartCard title="% de llenado por estado" subtitle="Porcentaje de campos respondidos sobre el total esperado">
+          <PctLlenadoChart porEntidad={porEntidad} globalPct={stats.pctLlenado} />
+        </ChartCard>
+        <ChartCard title="Unidades por entidad" subtitle="Total de unidades capturadas ordenadas de mayor a menor">
+          <EntidadesChart porEntidad={porEntidad} />
+        </ChartCard>
+        <ChartCard title="Unidades con y sin internet" subtitle="Distribución de conectividad sobre el total de CLUES esperadas">
+          <InternetChart internetPie={internetPie} />
+        </ChartCard>
+      </div>
 
       {showMap && <MapModal onClose={() => setShowMap(false)} porEntidad={porEntidad} cluesGeo={cluesGeo} />}
     </>

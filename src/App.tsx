@@ -262,7 +262,8 @@ export default function App() {
 
   const internetPie = useMemo<InternetPieItem[]>(() => {
     const conInternet = stats.unidadesInternet;
-    const sinInternet = Math.max(0, stats.baseCluesEsperadas - conInternet);
+    // Referente a las unidades capturadas (506), no al total esperado
+    const sinInternet = Math.max(0, stats.cluesCapturadas - conInternet);
     return [
       { name: 'Con Internet', value: conInternet },
       { name: 'Sin Internet', value: sinInternet },
