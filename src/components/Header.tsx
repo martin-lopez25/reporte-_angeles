@@ -1,8 +1,7 @@
-import { Clock } from 'lucide-react';
 
 const LOGO_URL = 'https://imssbienestar.gob.mx/assets/img/imb_b.svg';
 
-export function Header({ lastUpdateLabel, onLogoClick }: { lastUpdateLabel: string; onLogoClick?: () => void }) {
+export function Header({ onLogoClick }: { onLogoClick?: () => void }) {
 
   return (
     <>
@@ -22,10 +21,6 @@ export function Header({ lastUpdateLabel, onLogoClick }: { lastUpdateLabel: stri
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-400 sm:flex">
-              <Clock className="h-3 w-3" />
-              Ultima actualizacion: {lastUpdateLabel}
-            </span>
           </div>
         </div>
       </nav>
