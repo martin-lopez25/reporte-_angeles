@@ -209,6 +209,7 @@ export default function App() {
       cluesCapturadas: cluesCapturadas.size,
       entidadesCapturadas: entidadesCapturadas.size,
       unidadesInternet: cluesConInternet.size,
+      consultoriosTotales: resumen.reduce((s, r) => s + toNumber(r.consultorio), 0),
       pctLlenado: (() => {
         const FIXED = new Set(['entidad', 'clues_imb', 'nombre_de_la_unidad', 'internet', 'consultorios_habilitados', 'consultorio', 'turno_consultorio']);
         let filled = 0, total = 0;
@@ -252,12 +253,12 @@ export default function App() {
 
     return [...counts.entries()]
       .map(([item, faltantes]) => ({
-        item: item.replaceAll('_', ' '),
+        item: item.replace(/_consultorio(_\d+)?$/i, '').replaceAll('_', ' ').trim(),
         faltantes,
         pct: total > 0 ? (faltantes / total) * 100 : 0,
       }))
       .sort((a, b) => b.faltantes - a.faltantes)
-      .slice(0, 10);
+      .slice(0, 20);
   }, [resultado]);
 
   const internetPie = useMemo<InternetPieItem[]>(() => {

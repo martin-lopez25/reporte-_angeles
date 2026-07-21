@@ -526,6 +526,17 @@ function MapModal({ onClose, porEntidad, cluesGeo = [] }: {
       else map.on('load', addLayers);
     }
 
+    // Quitar etiquetas de ciudades/pueblos del estilo base
+    const removeCityLabels = () => {
+      const style = map.getStyle();
+      if (!style?.layers) return;
+      style.layers
+        .filter((l) => /city|town|village|suburb|place|hamlet/i.test(l.id))
+        .forEach((l) => { try { map.removeLayer(l.id); } catch { /* ya no existe */ } });
+    };
+    if (map.isStyleLoaded()) removeCityLabels();
+    else map.on('load', removeCityLabels);
+
     return () => map.remove();
   }, []);
 
@@ -595,7 +606,7 @@ export function StatCards({
   const [showMap, setShowMap] = useState(false);
 
   const values: Record<StatKey, { value: number; expected?: number; helper?: string }> = {
-    cluesCapturadas: { value: stats.cluesCapturadas, expected: stats.baseCluesEsperadas },
+    cluesCapturadas: { value: stats.cluesCapturadas, expected: stats.baseCluesEsperadas, helper: `${stats.consultoriosTotales.toLocaleString('es-MX')} consultorios registrados` },
     entidadesCapturadas: { value: stats.entidadesCapturadas, expected: stats.baseEntidadesEsperadas },
     unidadesInternet: { value: stats.unidadesInternet, expected: stats.baseCluesEsperadas },
     pctLlenado: { value: stats.pctLlenado },
@@ -644,8 +655,8 @@ export function StatCards({
         <ChartCard title="% de llenado por estado" subtitle="Porcentaje de campos respondidos sobre el total esperado">
           <PctLlenadoChart porEntidad={porEntidad} globalPct={stats.pctLlenado} />
         </ChartCard>
-        <ChartCard title="Top 10 insumos más frecuentes que faltan" subtitle="Frecuencia de faltantes por equipo/material en consultorios levantados">
-          <ResponsiveContainer width="100%" height={290}>
+        <ChartCard title="Top 20 insumos más frecuentes que faltan" subtitle="Frecuencia de faltantes por equipo/material en consultorios levantados (por consultorio)">
+          <ResponsiveContainer width="100%" height={520}>
             <BarChart data={topFaltantes} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} />

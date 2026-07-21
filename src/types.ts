@@ -36,6 +36,7 @@ export interface DashboardStats {
   entidadesCapturadas: number;
   unidadesInternet: number;
   pctLlenado: number;
+  consultoriosTotales: number;
 }
 
 export interface TopUnidadChart {

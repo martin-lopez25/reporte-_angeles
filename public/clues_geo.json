@@ -1610,6 +1610,16 @@
     "pct_llenado": 95.8
   },
   {
+    "clues_imb": "GRIMB009346",
+    "nombre_de_la_unidad": "CENTRO DE SALUD COLONIA TATAGILDO",
+    "entidad": "GUERRERO",
+    "lat": 17.576725,
+    "lng": -99.510695,
+    "internet": true,
+    "consultorios": 3.0,
+    "pct_llenado": 94.4
+  },
+  {
     "clues_imb": "GRIMB009433",
     "nombre_de_la_unidad": "CENTRO DE SALUD CHAUCINGO",
     "entidad": "GUERRERO",
