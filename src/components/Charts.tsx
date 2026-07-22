@@ -14,9 +14,9 @@ import {
   ComposedChart,
   Line,
 } from 'recharts';
-import { Database, Layers3, Building2, Globe, ClipboardList, X, MapPin } from 'lucide-react';
+import { Layers3, Building2, Globe, ClipboardList, X, MapPin } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
-import type { DashboardStats, CluesGeoItem, DataRow, EntidadChart, InternetPieItem, TopFaltanteChart } from '../types';
+import type { DashboardStats, CluesGeoItem, EntidadChart, InternetPieItem, TopFaltanteChart } from '../types';
 
 interface ChartsProps {
   stats: DashboardStats;
@@ -526,17 +526,12 @@ function MapModal({ onClose, porEntidad, cluesGeo = [] }: {
       else map.on('load', addLayers);
     }
 
-    // Quitar solo etiquetas de ciudades/pueblos, sin tocar carreteras ni calles
+    // Quitar etiquetas de ciudades/pueblos del estilo base
     const removeCityLabels = () => {
       const style = map.getStyle();
       if (!style?.layers) return;
       style.layers
-        .filter((l) => {
-          const id = l.id.toLowerCase();
-          const isCity = id.includes('city') || id.includes('town') || id.includes('village') || id.includes('hamlet');
-          const isRoad = id.includes('road') || id.includes('street') || id.includes('highway') || id.includes('motorway') || id.includes('route');
-          return isCity && !isRoad;
-        })
+        .filter((l) => /city|town|village|suburb|place|hamlet/i.test(l.id))
         .forEach((l) => { try { map.removeLayer(l.id); } catch { /* ya no existe */ } });
     };
     if (map.isStyleLoaded()) removeCityLabels();

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Database, Building2, Layers3 } from 'lucide-react';
 import { Header } from './components/Header';
-import { StatCards } from './components/Charts';
+import { Charts, StatCards } from './components/Charts';
 import { DataTable } from './components/DataTable';
 import { cargarTablasFormulario } from './data';
 import type { DashboardStats, DataRow, EntidadChart, InternetPieItem, TopFaltanteChart, CluesGeoItem } from './types';
