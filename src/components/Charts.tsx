@@ -526,12 +526,17 @@ function MapModal({ onClose, porEntidad, cluesGeo = [] }: {
       else map.on('load', addLayers);
     }
 
-    // Quitar etiquetas de ciudades/pueblos del estilo base
+    // Quitar solo etiquetas de ciudades/pueblos, sin tocar carreteras ni calles
     const removeCityLabels = () => {
       const style = map.getStyle();
       if (!style?.layers) return;
       style.layers
-        .filter((l) => /city|town|village|suburb|place|hamlet/i.test(l.id))
+        .filter((l) => {
+          const id = l.id.toLowerCase();
+          const isCity = id.includes('city') || id.includes('town') || id.includes('village') || id.includes('hamlet');
+          const isRoad = id.includes('road') || id.includes('street') || id.includes('highway') || id.includes('motorway') || id.includes('route');
+          return isCity && !isRoad;
+        })
         .forEach((l) => { try { map.removeLayer(l.id); } catch { /* ya no existe */ } });
     };
     if (map.isStyleLoaded()) removeCityLabels();
