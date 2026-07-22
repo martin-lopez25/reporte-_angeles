@@ -14,9 +14,9 @@ import {
   ComposedChart,
   Line,
 } from 'recharts';
-import { Layers3, Building2, Globe, ClipboardList, X, MapPin } from 'lucide-react';
+import { Database, Layers3, Building2, Globe, ClipboardList, X, MapPin } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
-import type { DashboardStats, CluesGeoItem, EntidadChart, InternetPieItem, TopFaltanteChart } from '../types';
+import type { DashboardStats, CluesGeoItem, DataRow, EntidadChart, InternetPieItem, TopFaltanteChart } from '../types';
 
 interface ChartsProps {
   stats: DashboardStats;
