@@ -74,7 +74,7 @@ async function fetchDataRows(filename: string): Promise<DataRow[]> {
 }
 
 export async function cargarTablasFormulario(): Promise<{ tablas: TablasFormulario; fetchedAt: Date }> {
-  const [baseClues, baseMeta, cluesGeo, resultado, resumen, resumenEntidad, faltantes] = await Promise.all([
+  const [baseClues, baseMeta, cluesGeo, resultado, resumen, resumenEntidad, faltantes, baseAn] = await Promise.all([
     fetchBaseClues(),
     fetchBaseMeta(),
     fetchCluesGeo(),
@@ -82,12 +82,13 @@ export async function cargarTablasFormulario(): Promise<{ tablas: TablasFormular
     fetchDataRows('resumen.json'),
     fetchDataRows('resumen_entidad.json'),
     fetchDataRows('faltantes.json'),
+    fetchDataRows('base_an.json'),
   ]);
 
   const tablas: TablasFormulario = {
     baseClues,
     baseMeta,
-    baseAn: [],
+    baseAn,
     resultado,
     resumen,
     resumenEntidad,

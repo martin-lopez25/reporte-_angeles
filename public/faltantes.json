@@ -104,14 +104,6 @@
     "preguntas_faltantes": "charola_de_mayo_de_acero_inoxidable, contenedor_de_jabon_liquido, silla_para_el_acompanante, termometro_de_vastago"
   },
   {
-    "entidad": "COLIMA",
-    "clues_imb": "CMIMB001066",
-    "nombre_de_la_unidad": "CENTRO DE SALUD LA LIMA",
-    "consultorio": 1,
-    "n_faltantes": 2,
-    "preguntas_faltantes": "cubeta_de_acero_inoxidable_y_bolsa, termometro_digital"
-  },
-  {
     "entidad": "CHIAPAS",
     "clues_imb": "CSIMB001522",
     "nombre_de_la_unidad": "SANTA ELENA",
@@ -854,6 +846,14 @@
     "consultorio": 1,
     "n_faltantes": 2,
     "preguntas_faltantes": "bascula_pesabebes_electronica, espejo_vestidor"
+  },
+  {
+    "entidad": "GUERRERO",
+    "clues_imb": "GRIMB006336",
+    "nombre_de_la_unidad": "R-01 PERICON EL",
+    "consultorio": 1,
+    "n_faltantes": 3,
+    "preguntas_faltantes": "porta_rollo_para_papel_kraft_o_sabanas, termometro_digital, tijera_recta"
   },
   {
     "entidad": "GUERRERO",
@@ -2168,6 +2168,14 @@
     "preguntas_faltantes": "cubeta_de_acero_inoxidable_y_bolsa"
   },
   {
+    "entidad": "NAYARIT",
+    "clues_imb": "NTIMB001625",
+    "nombre_de_la_unidad": "HIGUERA BLANCA",
+    "consultorio": 1,
+    "n_faltantes": 2,
+    "preguntas_faltantes": "contenedor_de_toallas_desechables, guardarropa_con_perchero"
+  },
+  {
     "entidad": "OAXACA",
     "clues_imb": "OCIMB000246",
     "nombre_de_la_unidad": "CIUDAD IXTEPEC",
@@ -2598,6 +2606,14 @@
     "consultorio": 2,
     "n_faltantes": 4,
     "preguntas_faltantes": "banco_de_altura, bote_sanitario_con_pedal, martillo_percusor, oximetro_de_pulso"
+  },
+  {
+    "entidad": "TAMAULIPAS",
+    "clues_imb": "TSIMB000111",
+    "nombre_de_la_unidad": "CENTRO DE SALUD BARRA DE MORÓN",
+    "consultorio": 1,
+    "n_faltantes": 1,
+    "preguntas_faltantes": "estetoscopio_capsula_doble"
   },
   {
     "entidad": "TAMAULIPAS",

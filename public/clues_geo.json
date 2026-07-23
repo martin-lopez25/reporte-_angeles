@@ -237,7 +237,7 @@
     "lng": -103.6711,
     "internet": true,
     "consultorios": 1.0,
-    "pct_llenado": 97.9
+    "pct_llenado": 100.0
   },
   {
     "clues_imb": "CSIMB000501",
@@ -2425,6 +2425,16 @@
     "entidad": "GUERRERO",
     "lat": 16.939089,
     "lng": -99.368699,
+    "internet": false,
+    "consultorios": 1.0,
+    "pct_llenado": 93.8
+  },
+  {
+    "clues_imb": "GRIMB006336",
+    "nombre_de_la_unidad": "R-01 PERICON EL",
+    "entidad": "GUERRERO",
+    "lat": 16.981353,
+    "lng": -99.325294,
     "internet": false,
     "consultorios": 1.0,
     "pct_llenado": 93.8
@@ -5180,6 +5190,16 @@
     "pct_llenado": 95.8
   },
   {
+    "clues_imb": "NTIMB001625",
+    "nombre_de_la_unidad": "HIGUERA BLANCA",
+    "entidad": "NAYARIT",
+    "lat": 20.798404,
+    "lng": -105.466224,
+    "internet": true,
+    "consultorios": 1.0,
+    "pct_llenado": 95.8
+  },
+  {
     "clues_imb": "NTIMB001642",
     "nombre_de_la_unidad": "LO DE MARCOS",
     "entidad": "NAYARIT",
@@ -6690,6 +6710,16 @@
     "pct_llenado": 95.8
   },
   {
+    "clues_imb": "TSIMB000111",
+    "nombre_de_la_unidad": "CENTRO DE SALUD BARRA DE MORÓN",
+    "entidad": "TAMAULIPAS",
+    "lat": 22.728677,
+    "lng": -97.863546,
+    "internet": true,
+    "consultorios": 1.0,
+    "pct_llenado": 93.8
+  },
+  {
     "clues_imb": "TSIMB000152",
     "nombre_de_la_unidad": "CENTRO DE SALUD ESTACIÓN COLONIAS",
     "entidad": "TAMAULIPAS",
@@ -7068,6 +7098,16 @@
     "internet": true,
     "consultorios": 2.0,
     "pct_llenado": 97.9
+  },
+  {
+    "clues_imb": "TSIMB002100",
+    "nombre_de_la_unidad": "CENTRO DE SALUD FLECHADORES",
+    "entidad": "TAMAULIPAS",
+    "lat": 24.522385,
+    "lng": -98.678228,
+    "internet": true,
+    "consultorios": 1.0,
+    "pct_llenado": 100.0
   },
   {
     "clues_imb": "TSIMB002112",
