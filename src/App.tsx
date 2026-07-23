@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Database, Building2, Layers3 } from 'lucide-react';
+import { Database, Building2, Layers3, AlertTriangle } from 'lucide-react';
 import { Header } from './components/Header';
 import { Charts, StatCards } from './components/Charts';
 import { DataTable } from './components/DataTable';
 import { cargarTablasFormulario } from './data';
 import type { DashboardStats, DataRow, EntidadChart, InternetPieItem, TopFaltanteChart, CluesGeoItem } from './types';
 
-type TabKey = 'cruda' | 'clues' | 'estado';
+type TabKey = 'cruda' | 'clues' | 'estado' | 'faltantes';
 
 function toText(value: unknown): string {
   if (value === null || value === undefined) return '';
@@ -128,6 +128,7 @@ export default function App() {
   const [resumen, setResumen] = useState<DataRow[]>([]);
   const [resumenEntidad, setResumenEntidad] = useState<DataRow[]>([]);
   const [cluesGeo, setCluesGeo] = useState<CluesGeoItem[]>([]);
+  const [faltantes, setFaltantes] = useState<DataRow[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   async function load() {
@@ -142,6 +143,7 @@ export default function App() {
       setResumen(tablas.resumen);
       setResumenEntidad(tablas.resumenEntidad);
       setCluesGeo(tablas.cluesGeo);
+      setFaltantes(tablas.faltantes);
 
       const updatedFromScript = parseDateValue(tablas.baseMeta.scriptLastRunAt);
       setLastUpdate(updatedFromScript ?? inferDataUpdatedAt(tablas.baseAn));
@@ -324,6 +326,7 @@ export default function App() {
     { key: 'cruda', label: 'Base Cruda', icon: Database, count: baseAn.length },
     { key: 'clues', label: 'Por CLUES', icon: Building2, count: resultado.length },
     { key: 'estado', label: 'Por Estado', icon: Layers3, count: resumenEntidad.length },
+    { key: 'faltantes', label: 'Faltantes', icon: AlertTriangle, count: faltantes.length },
   ];
 
   const tabs = allTabs.filter(({ key }) => key !== 'cruda' || crudaUnlocked);
@@ -391,6 +394,29 @@ export default function App() {
                   data={resumenEntidad}
                   columns={tableColumns(resumenEntidad, false)}
                   exportColumns={tableColumns(resumenEntidad, true)}
+                />
+              )}
+
+              {tab === 'faltantes' && (
+                <DataTable<DataRow>
+                  exportFileName="faltantes_catalogo"
+                  exportSheetName="Faltantes"
+                  data={faltantes}
+                  columns={faltantes.length ? Object.keys(faltantes[0]).map((key) => ({
+                    key,
+                    label: key.replaceAll('_', ' '),
+                    render: (row: DataRow) => {
+                      const v = row[key];
+                      if (key === 'preguntas_faltantes' && typeof v === 'string')
+                        return v.replaceAll('_', ' ');
+                      return formatCellValue(v, key);
+                    },
+                  })) : []}
+                  exportColumns={faltantes.length ? Object.keys(faltantes[0]).map((key) => ({
+                    key,
+                    label: key.replaceAll('_', ' '),
+                    render: (row: DataRow) => formatCellValue(row[key], key),
+                  })) : []}
                 />
               )}
             </div>

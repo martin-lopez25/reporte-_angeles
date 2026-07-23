@@ -24,6 +24,7 @@ export interface TablasFormulario {
   resumen: DataRow[];
   resumenEntidad: DataRow[];
   cluesGeo: CluesGeoItem[];
+  faltantes: DataRow[];
 }
 
 export interface DashboardStats {

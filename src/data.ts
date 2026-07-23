@@ -74,23 +74,25 @@ async function fetchDataRows(filename: string): Promise<DataRow[]> {
 }
 
 export async function cargarTablasFormulario(): Promise<{ tablas: TablasFormulario; fetchedAt: Date }> {
-  const [baseClues, baseMeta, cluesGeo, resultado, resumen, resumenEntidad] = await Promise.all([
+  const [baseClues, baseMeta, cluesGeo, resultado, resumen, resumenEntidad, faltantes] = await Promise.all([
     fetchBaseClues(),
     fetchBaseMeta(),
     fetchCluesGeo(),
     fetchDataRows('resultado.json'),
     fetchDataRows('resumen.json'),
     fetchDataRows('resumen_entidad.json'),
+    fetchDataRows('faltantes.json'),
   ]);
 
   const tablas: TablasFormulario = {
     baseClues,
     baseMeta,
-    baseAn: [],          // ya no se carga de Google Sheets
+    baseAn: [],
     resultado,
     resumen,
     resumenEntidad,
     cluesGeo,
+    faltantes,
   };
 
   return { tablas, fetchedAt: new Date() };
