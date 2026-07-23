@@ -160,21 +160,10 @@ export default function App() {
   }, [lastUpdate]);
 
   const stats = useMemo<DashboardStats>(() => {
-    const unidadRows = baseAn.filter((row) => toText(row.tipo_registro) === 'unidad');
-    const respuestaRows = baseAn.filter((row) => toText(row.tipo_registro) === 'respuesta');
-
-    const cluesEsperadas = new Set<string>();
-
-    for (const row of unidadRows) {
-      const clues = toText(row.clues_imb);
-
-      if (clues) cluesEsperadas.add(clues);
-    }
-
+    // baseAn ya no se usa — los datos vienen de resumen y resultado directamente
     const cluesCapturadas = new Set<string>();
     const entidadesCapturadas = new Set<string>();
     const cluesConInternet = new Set<string>();
-    const cluesConConsultorio = new Set<string>();
 
     for (const row of resumen) {
       const clues = toText(row.clues_imb);
@@ -184,26 +173,15 @@ export default function App() {
 
       const internet = toText(row.internet).toLowerCase();
       if (clues && (internet === 'true' || internet === '1' || internet === 'si')) cluesConInternet.add(clues);
-
-      if (clues && Math.max(0, toNumber(row.consultorio)) > 0) cluesConConsultorio.add(clues);
     }
 
-    const fallbackClues = baseClues.length > 0
-      ? baseClues.map((c) => toText(c)).filter(Boolean).length
-      : cluesEsperadas.size;
-    const denominadorClues = baseMeta.cluesTotal > 0 ? baseMeta.cluesTotal : fallbackClues;
-
-    const fallbackEntidades = new Set(
-      unidadRows
-        .map((row) => toText(row.entidad))
-        .filter(Boolean),
-    ).size;
-    const denominadorEntidades = baseMeta.entidadesEsperadas > 0 ? baseMeta.entidadesEsperadas : fallbackEntidades;
+    const denominadorClues = baseMeta.cluesTotal > 0 ? baseMeta.cluesTotal : baseClues.length;
+    const denominadorEntidades = baseMeta.entidadesEsperadas > 0 ? baseMeta.entidadesEsperadas : entidadesCapturadas.size;
 
     return {
-      registrosBase: baseAn.length,
-      registrosUnidad: unidadRows.length,
-      registrosRespuesta: respuestaRows.length,
+      registrosBase: resumen.length,
+      registrosUnidad: resumen.length,
+      registrosRespuesta: resultado.length,
       baseCluesEsperadas: denominadorClues,
       baseEntidadesEsperadas: denominadorEntidades,
       cluesCapturadas: cluesCapturadas.size,
@@ -211,7 +189,7 @@ export default function App() {
       unidadesInternet: cluesConInternet.size,
       consultoriosTotales: resumen.reduce((s, r) => s + toNumber(r.consultorio), 0),
       pctLlenado: (() => {
-        const FIXED = new Set(['entidad', 'clues_imb', 'nombre_de_la_unidad', 'internet', 'consultorios_habilitados', 'consultorio', 'turno_consultorio']);
+        const FIXED = new Set(['entidad', 'clues_imb', 'nombre_de_la_unidad', 'internet', 'consultorios_habilitados', 'consultorio', 'turno_consultorio', 'latitud', 'longitud']);
         let filled = 0, total = 0;
         for (const row of resultado) {
           for (const [key, value] of Object.entries(row)) {
@@ -223,7 +201,7 @@ export default function App() {
         return total > 0 ? +(filled / total * 100).toFixed(1) : 0;
       })(),
     };
-  }, [baseAn, baseClues, baseMeta, resultado, resumen]);
+  }, [baseClues, baseMeta, resultado, resumen]);
 
   const topFaltantes = useMemo<TopFaltanteChart[]>(() => {
     const fixedCols = new Set([
